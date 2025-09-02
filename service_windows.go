@@ -22,8 +22,8 @@ type Handler interface {
 
 const serviceName = "ProcessTracker"
 
-//Service context
-type processTrackerService struct {}
+// Service context
+type processTrackerService struct{}
 
 func (s *processTrackerService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
 
@@ -35,37 +35,38 @@ func (s *processTrackerService) Execute(args []string, r <-chan svc.ChangeReques
 	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 	//Service mainloop
-	loop:
+loop:
+	for {
+		//Receive channel signals
+		select {
 
-		for {
-			//Receive channel signals
-			select {
+		//Tick signal
+		case <-tick:
+			log.Printf("Tick Handled...!")
 
-			//Tick signal
-			case <- tick:
-				log.Printf("Tick Handled...!")
-
-			//'r' receive only channel, SCM signals
-			case c := <-r:
-				switch c.Cmd {
-				case svc.Interrogate:	//Check current status of service
-					status <- c.CurrentStatus
-				case svc.Stop, svc.Shutdown:	//Service needs to be stopped or shutdown
-					log.Printf("Shutting service...!")
-					break loop 
-				case svc.Pause:		//Service needs to be paused, without shutdown
-					status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
-				case svc.Continue:	//Resume paused execution state of service
-					status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-				default:
-					log.Printf("Unexpected service control request #%d", c)
-				}
+		//'r' receive only channel, SCM signals
+		case c := <-r:
+			switch c.Cmd {
+			case svc.Interrogate: //Check current status of service
+				status <- c.CurrentStatus
+			case svc.Stop, svc.Shutdown: //Service needs to be stopped or shutdown
+				log.Printf("Shutting service...!")
+				break loop
+			case svc.Pause: //Service needs to be paused, without shutdown
+				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
+			case svc.Continue: //Resume paused execution state of service
+				status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+			default:
+				log.Printf("Unexpected service control request #%d", c)
 			}
 		}
+	}
+
+	status <- svc.Status{State: svc.StopPending}
+	return false, 1
 }
 
-
-func runService(name string, isDebug bool) {
+func RunService(name string, isDebug bool) {
 	if isDebug {
 		err := debug.Run(name, &processTrackerService{})
 		if err != nil {
