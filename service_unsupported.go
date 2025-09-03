@@ -6,6 +6,7 @@ import (
 	"log"
 )
 
-func RunService(name string, isDebug bool) {
+func RunService(name string, isDebug bool) error {
 	log.Fatal("Unsupported platform")
+	return nil
 }

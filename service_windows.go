@@ -4,60 +4,60 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
-	"time"
+	"net"
+	"os"
 
+	"github.com/Microsoft/go-winio"
+	"github.com/jms-guy/timekeep/internal/database"
+	"github.com/jms-guy/timekeep/sql"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
 
-/* Interface to be implemented to build a Windows Service
-type Handler interface {
-	//Will be called by package code at start of service, and will exit once Execute is complete
-	//Read service change requests from 'r', and keep service control manager up to date about service state by writing into 's'
-	//Args contains service name followed by argument strings
-	//Can provide service exit code in exitCode return parameter, also indicate if exit code, if any, is service specific or not using svcSpecificEC
-	Execute(args []string, r <-chan ChangeRequest, s chan<- Status) (svcSpecificEC bool, exitCode uint32)
-}*/
-
-const serviceName = "ProcessTracker"
+const serviceName = "TimeKeep"
 
 // Service context
-type processTrackerService struct{}
+type timekeepService struct {
+	db       *database.Queries
+	logger   *log.Logger
+	shutdown chan struct{}
+}
 
-func (s *processTrackerService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
+type Command struct {
+	Action string         `json:"action"`
+	Data   map[string]any `json:"data,omitempty"`
+}
+
+func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
+	s.shutdown = make(chan struct{})
 
 	//Signals that service can accept from SCM(Service Control Manager)
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
-	tick := time.Tick(30 * time.Second)
 
 	status <- svc.Status{State: svc.StartPending}
 	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	//Service mainloop
+	go s.listenPipe()
+
+	//Service mainloop, handles only SCM signals
 loop:
 	for {
-		//Receive channel signals
 		select {
-
-		//Tick signal
-		case <-tick:
-			log.Printf("Tick Handled...!")
-
-		//'r' receive only channel, SCM signals
 		case c := <-r:
 			switch c.Cmd {
 			case svc.Interrogate: //Check current status of service
 				status <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown: //Service needs to be stopped or shutdown
-				log.Printf("Shutting service...!")
+				close(s.shutdown)
 				break loop
 			case svc.Pause: //Service needs to be paused, without shutdown
 				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
 			case svc.Continue: //Resume paused execution state of service
 				status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
-				log.Printf("Unexpected service control request #%d", c)
+				s.logger.Printf("Unexpected service control request #%d", c)
 			}
 		}
 	}
@@ -66,16 +66,78 @@ loop:
 	return false, 1
 }
 
-func RunService(name string, isDebug bool) {
+// Opens a Windows named pipe connection, to listen for commands
+func (s *timekeepService) listenPipe() {
+	pipeName := `\\.\pipe\TimeKeep`
+
+	for {
+		select {
+		case <-s.shutdown:
+			return
+		default:
+			pipe, err := winio.ListenPipe(pipeName, nil)
+			if err != nil {
+				s.logger.Printf("Failed to create pipe: %w", err)
+				continue
+			}
+
+			conn, err := pipe.Accept()
+			if err != nil {
+				s.logger.Printf("Failed to accept connection: %w", err)
+				continue
+			}
+
+			go s.handlePipeConnection(conn)
+		}
+	}
+}
+
+// Handles service commands read from pipe connection
+func (s *timekeepService) handlePipeConnection(conn net.Conn) {
+	defer conn.Close()
+
+	var cmd Command
+	decoder := json.NewDecoder(conn)
+
+	if err := decoder.Decode(&cmd); err != nil {
+		s.logger.Printf("Failed to decode command: %w", err)
+		return
+	}
+
+	switch cmd.Action {
+	case "add_program":
+		s.addProgram(cmd.Data["name"].(string))
+	case "remove_program":
+		s.removeProgram(cmd.Data["name"].(string))
+	case "get_stats":
+		stats := s.getStats()
+		json.NewEncoder(conn).Encode(stats)
+	}
+}
+
+// Creates new service instance
+func NewTimekeepService() (*timekeepService, error) {
+	db, err := sql.OpenLocalDatabase()
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.New(os.Stdout, "TimeKeep: ", log.LstdFlags)
+
+	return &timekeepService{
+		db:     db,
+		logger: logger,
+	}, nil
+}
+
+func RunService(name string, isDebug bool) error {
+	service, err := NewTimekeepService()
+	if err != nil {
+		return err
+	}
 	if isDebug {
-		err := debug.Run(name, &processTrackerService{})
-		if err != nil {
-			log.Fatalln("Error running service in debug mode.")
-		}
+		return debug.Run(name, service)
 	} else {
-		err := svc.Run(name, &processTrackerService{})
-		if err != nil {
-			log.Fatalln("Error running service in Service Control mode.")
-		}
+		return svc.Run(name, service)
 	}
 }

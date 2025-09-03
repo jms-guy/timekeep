@@ -14,5 +14,8 @@ func main() {
 	defer f.Close()
 
 	log.SetOutput(f)
-	RunService("ProcessTracker", false)
+	err = RunService("TimeKeep", false)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

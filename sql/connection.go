@@ -13,8 +13,10 @@ import (
 //go:embed schema/*.sql
 var embedMigrations embed.FS
 
-func OpenLocalDatabase(dbPath string) (*database.Queries, error) {
-	db, err := sql.Open("sqlite", dbPath)
+func OpenLocalDatabase() (*database.Queries, error) {
+	localDb := "timekeep.db"
+
+	db, err := sql.Open("sqlite", localDb)
 	if err != nil {
 		return nil, err
 	}
