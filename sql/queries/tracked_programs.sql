@@ -5,7 +5,7 @@ WHERE name = ?;
 -- name: GetAllPrograms :many
 SELECT * FROM tracked_programs;
 
--- name: AddProgram :one
+-- name: AddProgram :exec
 INSERT INTO tracked_programs (name)
 VALUES (?);
 
@@ -13,7 +13,7 @@ VALUES (?);
 DELETE FROM tracked_programs
 WHERE name = ?;
 
--- name: UpdateLifetime :one
+-- name: UpdateLifetime :exec
 UPDATE tracked_programs
 SET lifetime_seconds = lifetime_seconds + ?
 WHERE id = ?;

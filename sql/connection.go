@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/jms-guy/timekeep/internal/database"
 	"github.com/pressly/goose/v3"
 )
 
