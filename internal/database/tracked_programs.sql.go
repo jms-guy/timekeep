@@ -59,6 +59,15 @@ func (q *Queries) GetProgramByName(ctx context.Context, name string) (TrackedPro
 	return i, err
 }
 
+const removeAllPrograms = `-- name: RemoveAllPrograms :exec
+DELETE FROM tracked_programs
+`
+
+func (q *Queries) RemoveAllPrograms(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, removeAllPrograms)
+	return err
+}
+
 const removeProgram = `-- name: RemoveProgram :exec
 DELETE FROM tracked_programs
 WHERE name = ?

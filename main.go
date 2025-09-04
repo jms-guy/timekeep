@@ -14,7 +14,7 @@ func main() {
 	defer f.Close()
 
 	log.SetOutput(f)
-	err = RunService("TimeKeep", false)
+	err = RunService("Timekeep", false)
 	if err != nil {
 		log.Fatalln(err)
 	}

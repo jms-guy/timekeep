@@ -1,9 +1,9 @@
 //go:build windows
-// +build windows
 
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net"
@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sys/windows/svc/debug"
 )
 
-const serviceName = "TimeKeep"
+const serviceName = "Timekeep"
 
 // Service context
 type timekeepService struct {
@@ -30,6 +30,34 @@ type Command struct {
 	Data   map[string]any `json:"data,omitempty"`
 }
 
+// Creates new service instance
+func NewTimekeepService() (*timekeepService, error) {
+	db, err := sql.OpenLocalDatabase()
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.New(os.Stdout, "Timekeep: ", log.LstdFlags)
+
+	return &timekeepService{
+		db:     db,
+		logger: logger,
+	}, nil
+}
+
+func RunService(name string, isDebug bool) error {
+	service, err := NewTimekeepService()
+	if err != nil {
+		return err
+	}
+	if isDebug {
+		return debug.Run(name, service)
+	} else {
+		return svc.Run(name, service)
+	}
+}
+
+// Service execute method for Windows Handler interface
 func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
 	s.shutdown = make(chan struct{})
 
@@ -68,7 +96,7 @@ loop:
 
 // Opens a Windows named pipe connection, to listen for commands
 func (s *timekeepService) listenPipe() {
-	pipeName := `\\.\pipe\TimeKeep`
+	pipeName := `\\.\pipe\Timekeep`
 
 	for {
 		select {
@@ -77,13 +105,13 @@ func (s *timekeepService) listenPipe() {
 		default:
 			pipe, err := winio.ListenPipe(pipeName, nil)
 			if err != nil {
-				s.logger.Printf("Failed to create pipe: %w", err)
+				s.logger.Printf("Failed to create pipe: %s", err)
 				continue
 			}
 
 			conn, err := pipe.Accept()
 			if err != nil {
-				s.logger.Printf("Failed to accept connection: %w", err)
+				s.logger.Printf("Failed to accept connection: %s", err)
 				continue
 			}
 
@@ -100,7 +128,7 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 	decoder := json.NewDecoder(conn)
 
 	if err := decoder.Decode(&cmd); err != nil {
-		s.logger.Printf("Failed to decode command: %w", err)
+		s.logger.Printf("Failed to decode command: %s", err)
 		return
 	}
 
@@ -109,35 +137,34 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 		s.addProgram(cmd.Data["name"].(string))
 	case "remove_program":
 		s.removeProgram(cmd.Data["name"].(string))
-	case "get_stats":
-		stats := s.getStats()
-		json.NewEncoder(conn).Encode(stats)
+	case "reload_programs":
+		s.reloadTrackedPrograms()
 	}
 }
 
-// Creates new service instance
-func NewTimekeepService() (*timekeepService, error) {
-	db, err := sql.OpenLocalDatabase()
+func (s *timekeepService) addProgram(programName string) {
+	err := s.db.AddProgram(context.Background(), programName)
 	if err != nil {
-		return nil, err
-	}
-
-	logger := log.New(os.Stdout, "TimeKeep: ", log.LstdFlags)
-
-	return &timekeepService{
-		db:     db,
-		logger: logger,
-	}, nil
-}
-
-func RunService(name string, isDebug bool) error {
-	service, err := NewTimekeepService()
-	if err != nil {
-		return err
-	}
-	if isDebug {
-		return debug.Run(name, service)
+		s.logger.Printf("Error adding program: %s", err)
 	} else {
-		return svc.Run(name, service)
+		s.logger.Printf("Added program: %s", programName)
+	}
+}
+
+func (s *timekeepService) removeProgram(programName string) {
+	err := s.db.RemoveProgram(context.Background(), programName)
+	if err != nil {
+		s.logger.Printf("Error removing program: %s", err)
+	} else {
+		s.logger.Printf("Removed program: %s", programName)
+	}
+}
+
+func (s *timekeepService) reloadTrackedPrograms() {
+	err := s.db.RemoveAllPrograms(context.Background())
+	if err != nil {
+		s.logger.Printf("Error reloading tracked programs: %s", err)
+	} else {
+		s.logger.Println("Tracked programs reset")
 	}
 }
