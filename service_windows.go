@@ -98,23 +98,23 @@ loop:
 func (s *timekeepService) listenPipe() {
 	pipeName := `\\.\pipe\Timekeep`
 
+	pipe, err := winio.ListenPipe(pipeName, nil)
+	if err != nil {
+		s.logger.Printf("Failed to create pipe: %s", err)
+		return
+	}
+	defer pipe.Close()
+
 	for {
 		select {
 		case <-s.shutdown:
 			return
 		default:
-			pipe, err := winio.ListenPipe(pipeName, nil)
-			if err != nil {
-				s.logger.Printf("Failed to create pipe: %s", err)
-				continue
-			}
-
 			conn, err := pipe.Accept()
 			if err != nil {
 				s.logger.Printf("Failed to accept connection: %s", err)
 				continue
 			}
-
 			go s.handlePipeConnection(conn)
 		}
 	}
@@ -137,8 +137,8 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 		s.addProgram(cmd.Data["name"].(string))
 	case "remove_program":
 		s.removeProgram(cmd.Data["name"].(string))
-	case "reload_programs":
-		s.reloadTrackedPrograms()
+	case "reset_all":
+		s.removeAllPrograms()
 	}
 }
 
@@ -160,7 +160,7 @@ func (s *timekeepService) removeProgram(programName string) {
 	}
 }
 
-func (s *timekeepService) reloadTrackedPrograms() {
+func (s *timekeepService) removeAllPrograms() {
 	err := s.db.RemoveAllPrograms(context.Background())
 	if err != nil {
 		s.logger.Printf("Error reloading tracked programs: %s", err)
