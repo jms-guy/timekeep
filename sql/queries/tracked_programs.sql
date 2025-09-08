@@ -2,8 +2,8 @@
 SELECT * FROM tracked_programs
 WHERE name = ?;
 
--- name: GetAllPrograms :many
-SELECT * FROM tracked_programs;
+-- name: GetAllProgramNames :many
+SELECT name FROM tracked_programs;
 
 -- name: AddProgram :exec
 INSERT INTO tracked_programs (name)

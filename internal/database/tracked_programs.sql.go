@@ -20,23 +20,23 @@ func (q *Queries) AddProgram(ctx context.Context, name string) error {
 	return err
 }
 
-const getAllPrograms = `-- name: GetAllPrograms :many
-SELECT id, name, lifetime_seconds FROM tracked_programs
+const getAllProgramNames = `-- name: GetAllProgramNames :many
+SELECT name FROM tracked_programs
 `
 
-func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) {
-	rows, err := q.db.QueryContext(ctx, getAllPrograms)
+func (q *Queries) GetAllProgramNames(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllProgramNames)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TrackedProgram
+	var items []string
 	for rows.Next() {
-		var i TrackedProgram
-		if err := rows.Scan(&i.ID, &i.Name, &i.LifetimeSeconds); err != nil {
+		var name string
+		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, name)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

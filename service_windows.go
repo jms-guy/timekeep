@@ -4,10 +4,13 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/Microsoft/go-winio"
 	"github.com/jms-guy/timekeep/internal/database"
@@ -18,11 +21,15 @@ import (
 
 const serviceName = "Timekeep"
 
+//go:embed monitor.ps1
+var monitorScript string
+
 // Service context
 type timekeepService struct {
-	db       *database.Queries
-	logger   *log.Logger
-	shutdown chan struct{}
+	db        *database.Queries
+	logger    *log.Logger
+	psProcess *exec.Cmd
+	shutdown  chan struct{}
 }
 
 type Command struct {
@@ -66,6 +73,15 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	status <- svc.Status{State: svc.StartPending}
 	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+
+	programs, err := s.db.GetAllProgramNames(context.Background())
+	if err != nil {
+		s.logger.Printf("Failed to get programs: %s", err)
+		return false, 1
+	}
+	if len(programs) > 0 {
+		s.startProcessMonitor(programs)
+	}
 
 	go s.listenPipe()
 
@@ -133,38 +149,69 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 	}
 
 	switch cmd.Action {
-	case "add_program":
-		s.addProgram(cmd.Data["name"].(string))
-	case "remove_program":
-		s.removeProgram(cmd.Data["name"].(string))
-	case "reset_all":
-		s.removeAllPrograms()
+	case "process_start":
+		s.createSession(cmd.Data)
+	case "process_stop":
+		s.endSession(cmd.Data)
+	case "refresh":
+		s.refreshProcessMonitor()
 	}
 }
 
-func (s *timekeepService) addProgram(programName string) {
-	err := s.db.AddProgram(context.Background(), programName)
+// Runs the powershell WMI script, to monitor process events
+func (s *timekeepService) startProcessMonitor(programs []string) {
+	programList := strings.Join(programs, ",")
+
+	tempFile, err := os.CreateTemp("", "monitor*.ps1")
 	if err != nil {
-		s.logger.Printf("Error adding program: %s", err)
-	} else {
-		s.logger.Printf("Added program: %s", programName)
+		s.logger.Printf("Failed to create temp script file: %s", err)
+		return
+	}
+	defer tempFile.Close()
+
+	if _, err := tempFile.WriteString(monitorScript); err != nil {
+		s.logger.Printf("Failed to write script: %s", err)
+		return
+	}
+
+	cmd := exec.Command("powershell", "-File", tempFile.Name(), "-Programs", programList)
+	s.psProcess = cmd
+
+	if err := cmd.Start(); err != nil {
+		s.logger.Printf("Failed to start PowerShell monitor: %s", err)
+		s.psProcess = nil
 	}
 }
 
-func (s *timekeepService) removeProgram(programName string) {
-	err := s.db.RemoveProgram(context.Background(), programName)
+// Stops the currently running process monitoring script, and starts a new one with updated program list
+func (s *timekeepService) refreshProcessMonitor() {
+	programs, err := s.db.GetAllProgramNames(context.Background())
 	if err != nil {
-		s.logger.Printf("Error removing program: %s", err)
-	} else {
-		s.logger.Printf("Removed program: %s", programName)
+		s.logger.Printf("Failed to get programs: %s", err)
+		return
+	}
+
+	s.stopProcessMonitor()
+
+	if len(programs) > 0 {
+		s.startProcessMonitor(programs)
+	}
+
+	s.logger.Printf("Process monitor refresh with %d programs", len(programs))
+}
+
+// Stops the WMI powershell script
+func (s *timekeepService) stopProcessMonitor() {
+	if s.psProcess != nil {
+		s.psProcess.Process.Signal(os.Interrupt)
+		s.psProcess = nil
 	}
 }
 
-func (s *timekeepService) removeAllPrograms() {
-	err := s.db.RemoveAllPrograms(context.Background())
-	if err != nil {
-		s.logger.Printf("Error reloading tracked programs: %s", err)
-	} else {
-		s.logger.Println("Tracked programs reset")
-	}
+func (s *timekeepService) createSession(data map[string]any) {
+
+}
+
+func (s *timekeepService) endSession(data map[string]any) {
+
 }
