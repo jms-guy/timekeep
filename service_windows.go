@@ -10,11 +10,13 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Microsoft/go-winio"
 	"github.com/jms-guy/timekeep/internal/database"
-	"github.com/jms-guy/timekeep/sql"
+	mysql "github.com/jms-guy/timekeep/sql"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
@@ -26,20 +28,22 @@ var monitorScript string
 
 // Service context
 type timekeepService struct {
-	db        *database.Queries
-	logger    *log.Logger
-	psProcess *exec.Cmd
-	shutdown  chan struct{}
+	db             *database.Queries
+	logger         *log.Logger
+	psProcess      *exec.Cmd
+	activeSessions map[string]map[string]bool
+	shutdown       chan struct{}
 }
 
 type Command struct {
-	Action string         `json:"action"`
-	Data   map[string]any `json:"data,omitempty"`
+	Action      string `json:"action"`
+	ProcessName string `json:"name,omitempty"`
+	ProcessID   int    `json:"pid,omitempty"`
 }
 
 // Creates new service instance
 func NewTimekeepService() (*timekeepService, error) {
-	db, err := sql.OpenLocalDatabase()
+	db, err := mysql.OpenLocalDatabase()
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +51,10 @@ func NewTimekeepService() (*timekeepService, error) {
 	logger := log.New(os.Stdout, "Timekeep: ", log.LstdFlags)
 
 	return &timekeepService{
-		db:     db,
-		logger: logger,
+		db:             db,
+		logger:         logger,
+		activeSessions: make(map[string]map[string]bool),
+		shutdown:       make(chan struct{}),
 	}, nil
 }
 
@@ -66,7 +72,6 @@ func RunService(name string, isDebug bool) error {
 
 // Service execute method for Windows Handler interface
 func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
-	s.shutdown = make(chan struct{})
 
 	//Signals that service can accept from SCM(Service Control Manager)
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
@@ -150,9 +155,11 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 
 	switch cmd.Action {
 	case "process_start":
-		s.createSession(cmd.Data)
+		pid := strconv.Itoa(cmd.ProcessID)
+		s.createSession(cmd.ProcessName, pid)
 	case "process_stop":
-		s.endSession(cmd.Data)
+		pid := strconv.Itoa(cmd.ProcessID)
+		s.endSession(cmd.ProcessName, pid)
 	case "refresh":
 		s.refreshProcessMonitor()
 	}
@@ -208,10 +215,90 @@ func (s *timekeepService) stopProcessMonitor() {
 	}
 }
 
-func (s *timekeepService) createSession(data map[string]any) {
+// If no process is running with given name, will create a new active session in memory and database.
+// If there is already a process running with given name, new PID will be added to active session's in-memory map
+func (s *timekeepService) createSession(processName string, processID string) {
+	pidMap, exists := s.activeSessions[processName]
 
+	if exists {
+		pidMap[processID] = true
+		s.logger.Printf("Added PID %s to existing session for %s", processID, processName)
+	} else {
+		s.activeSessions[processName] = make(map[string]bool)
+		s.activeSessions[processName][processID] = true
+
+		sessionParams := database.CreateActiveSessionParams{
+			ProgramName: processName,
+			StartTime:   time.Now().UTC(),
+		}
+
+		err := s.db.CreateActiveSession(context.Background(), sessionParams)
+		if err != nil {
+			s.logger.Printf("Error creating active session for process: %s", processName)
+			return
+		}
+
+		s.logger.Printf("Created new session for %s with PID %s", processName, processID)
+	}
 }
 
-func (s *timekeepService) endSession(data map[string]any) {
+// Removes PID from memory map of active sessions, if there are still processes running with given name, session will not end.
+// If last process for given name ends, the active session is terminated, and session is moved into session history.
+func (s *timekeepService) endSession(processName, processID string) {
+	session, ok := s.activeSessions[processName] // Make sure there is a valid active session
+	if !ok {
+		s.logger.Printf("Error ending session: No active session for %s", processName)
+		return
+	}
 
+	_, ok = session[processID] // Make sure the processID is correctly present in session
+	if !ok {
+		s.logger.Printf("Error ending session: PID %s is not present in session map", processID)
+		return
+	}
+
+	delete(session, processID)
+
+	if len(session) == 0 {
+		s.moveSessionToHistory(processName)
+		delete(s.activeSessions, processName)
+	}
+}
+
+// Takes an active session and moves it into session history, ending active status
+func (s *timekeepService) moveSessionToHistory(processName string) {
+	startTime, err := s.db.GetActiveSession(context.Background(), processName)
+	if err != nil {
+		s.logger.Printf("Error getting active session from database: %s", err)
+		return
+	}
+	endTime := time.Now().UTC()
+	duration := int64(endTime.Sub(startTime).Seconds())
+
+	archivedSession := database.AddToSessionHistoryParams{
+		ProgramName:     processName,
+		StartTime:       startTime,
+		EndTime:         endTime,
+		DurationSeconds: duration,
+	}
+	err = s.db.AddToSessionHistory(context.Background(), archivedSession)
+	if err != nil {
+		s.logger.Printf("Error creating session history for %s: %s", processName, err)
+		return
+	}
+
+	err = s.db.UpdateLifetime(context.Background(), database.UpdateLifetimeParams{
+		Name:            processName,
+		LifetimeSeconds: duration,
+	})
+	if err != nil {
+		s.logger.Printf("Error updating lifetime for %s: %s", processName, err)
+	}
+
+	err = s.db.RemoveActiveSession(context.Background(), processName)
+	if err != nil {
+		s.logger.Printf("Error removing active session for %s: %s", processName, err)
+	}
+
+	s.logger.Printf("Moved session for %s to history (duration: %d seconds)", processName, duration)
 }

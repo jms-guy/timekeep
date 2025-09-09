@@ -5,7 +5,6 @@
 package database
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -26,5 +25,5 @@ type SessionHistory struct {
 type TrackedProgram struct {
 	ID              int64
 	Name            string
-	LifetimeSeconds sql.NullInt64
+	LifetimeSeconds int64
 }

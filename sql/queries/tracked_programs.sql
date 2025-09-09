@@ -16,7 +16,7 @@ WHERE name = ?;
 -- name: UpdateLifetime :exec
 UPDATE tracked_programs
 SET lifetime_seconds = lifetime_seconds + ?
-WHERE id = ?;
+WHERE name = ?;
 
 -- name: RemoveAllPrograms :exec
 DELETE FROM tracked_programs;

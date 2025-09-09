@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 )
 
 const addProgram = `-- name: AddProgram :exec
@@ -81,15 +80,15 @@ func (q *Queries) RemoveProgram(ctx context.Context, name string) error {
 const updateLifetime = `-- name: UpdateLifetime :exec
 UPDATE tracked_programs
 SET lifetime_seconds = lifetime_seconds + ?
-WHERE id = ?
+WHERE name = ?
 `
 
 type UpdateLifetimeParams struct {
-	LifetimeSeconds sql.NullInt64
-	ID              int64
+	LifetimeSeconds int64
+	Name            string
 }
 
 func (q *Queries) UpdateLifetime(ctx context.Context, arg UpdateLifetimeParams) error {
-	_, err := q.db.ExecContext(ctx, updateLifetime, arg.LifetimeSeconds, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateLifetime, arg.LifetimeSeconds, arg.Name)
 	return err
 }

@@ -16,18 +16,30 @@ $writer = New-Object System.IO.StreamWriter($pipe)
 $trackedPrograms = $Programs -split ","
 $whereClause = ($trackedPrograms | ForEach-Object { "ProcessName='$_'" }) -join " OR "
 
-# Build queries
 $startQuery = "SELECT * FROM Win32_ProcessStartTrace WHERE $whereClause"
 $stopQuery = "SELECT * FROM Win32_ProcessStopTrace WHERE $whereClause"
 
-# Register for WMI start events
+# Register for WMI events
 Register-WmiEvent -Query $startQuery -Action {
-    $data = @{action="process_start"; name=$Event.SourceEventArgs.NewEvent.ProcessName}
+    $processName = $Event.SourceEventArgs.NewEvent.ProcessName
+    $processID = $Event.SourceEventArgs.NewEvent.ProcessID
+    
+    $data = @{
+        action = "process_start"
+        name = $processName
+        pid = $processID
+    }
     $writer.WriteLine(($data | ConvertTo-Json))
 }
 
-# Register for WMI stop events
 Register-WmiEvent -Query $stopQuery -Action {
-    $data = @{action="process_stop"; name=$Event.SourceEventArgs.NewEvent.ProcessName}
+    $processName = $Event.SourceEventArgs.NewEvent.ProcessName
+    $processID = $Event.SourceEventArgs.NewEvent.ProcessID
+    
+    $data = @{
+        action = "process_stop"
+        name = $processName
+        pid = $processID
+    }
     $writer.WriteLine(($data | ConvertTo-Json))
 }
