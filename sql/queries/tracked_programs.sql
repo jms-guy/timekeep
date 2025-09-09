@@ -5,8 +5,11 @@ WHERE name = ?;
 -- name: GetAllProgramNames :many
 SELECT name FROM tracked_programs;
 
+-- name: GetAllPrograms :many
+SELECT * FROM tracked_programs;
+
 -- name: AddProgram :exec
-INSERT INTO tracked_programs (name)
+INSERT OR IGNORE INTO tracked_programs (name)
 VALUES (?);
 
 -- name: RemoveProgram :exec

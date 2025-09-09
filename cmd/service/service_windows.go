@@ -28,13 +28,15 @@ var monitorScript string
 
 // Service context
 type timekeepService struct {
-	db             *database.Queries
-	logger         *log.Logger
-	psProcess      *exec.Cmd
-	activeSessions map[string]map[string]bool
-	shutdown       chan struct{}
+	db             *database.Queries          // SQLC database queries
+	logger         *log.Logger                // Logging object
+	logFile        *os.File                   // Reference to the output log file
+	psProcess      *exec.Cmd                  // The running WMI powershell script
+	activeSessions map[string]map[string]bool // Map of active sessions & their PIDs
+	shutdown       chan struct{}              // Shutdown channel
 }
 
+// Command details communicated by pipe
 type Command struct {
 	Action      string `json:"action"`
 	ProcessName string `json:"name,omitempty"`
@@ -48,11 +50,17 @@ func NewTimekeepService() (*timekeepService, error) {
 		return nil, err
 	}
 
-	logger := log.New(os.Stdout, "Timekeep: ", log.LstdFlags)
+	f, err := os.OpenFile("timekeep.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := log.New(f, "Timekeep: ", log.LstdFlags)
 
 	return &timekeepService{
 		db:             db,
 		logger:         logger,
+		logFile:        f,
 		activeSessions: make(map[string]map[string]bool),
 		shutdown:       make(chan struct{}),
 	}, nil
@@ -100,6 +108,7 @@ loop:
 				status <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown: //Service needs to be stopped or shutdown
 				close(s.shutdown)
+				s.fileCleanup()
 				break loop
 			case svc.Pause: //Service needs to be paused, without shutdown
 				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -301,4 +310,11 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 	}
 
 	s.logger.Printf("Moved session for %s to history (duration: %d seconds)", processName, duration)
+}
+
+// Closes any open log files
+func (s *timekeepService) fileCleanup() {
+	if s.logFile != nil {
+		s.logFile.Close()
+	}
 }

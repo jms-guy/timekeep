@@ -10,7 +10,7 @@ import (
 )
 
 const addProgram = `-- name: AddProgram :exec
-INSERT INTO tracked_programs (name)
+INSERT OR IGNORE INTO tracked_programs (name)
 VALUES (?)
 `
 
@@ -36,6 +36,33 @@ func (q *Queries) GetAllProgramNames(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		items = append(items, name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllPrograms = `-- name: GetAllPrograms :many
+SELECT id, name, lifetime_seconds FROM tracked_programs
+`
+
+func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) {
+	rows, err := q.db.QueryContext(ctx, getAllPrograms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TrackedProgram
+	for rows.Next() {
+		var i TrackedProgram
+		if err := rows.Scan(&i.ID, &i.Name, &i.LifetimeSeconds); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
