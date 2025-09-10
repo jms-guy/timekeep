@@ -56,3 +56,27 @@ func (s *CLIService) statsCmd() *cobra.Command {
 		},
 	}
 }
+
+func (s *CLIService) sessionHistoryCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "history",
+		Aliases: []string{"History", "HISTORY"},
+		Short:   "Shows session history for a given program name",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.getSessionHistory(args)
+		},
+	}
+}
+
+func (s *CLIService) refreshCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "refresh",
+		Aliases: []string{"Refresh", "REFRESH"},
+		Short:   "Sends a manual refresh command to the service",
+		Args:    cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return WriteToService()
+		},
+	}
+}

@@ -31,6 +31,9 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.addProgramsCmd())
 	rootCmd.AddCommand(s.removeProgramsCmd())
 	rootCmd.AddCommand(s.getListcmd())
+	rootCmd.AddCommand(s.statsCmd())
+	rootCmd.AddCommand(s.sessionHistoryCmd())
+	rootCmd.AddCommand(s.refreshCmd())
 
 	return rootCmd
 }
