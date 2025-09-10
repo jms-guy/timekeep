@@ -14,4 +14,12 @@ WHERE session_history.program_name = ?;
 
 -- name: GetAllSessionsForProgram :many
 SELECT * FROM session_history
+WHERE session_history.program_name = ?
+ORDER BY start_time DESC;
+
+-- name: RemoveAllRecords :exec
+DELETE FROM session_history;
+
+-- name: RemoveRecordsForProgram :exec
+DELETE FROM session_history
 WHERE session_history.program_name = ?;

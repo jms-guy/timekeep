@@ -23,3 +23,12 @@ WHERE name = ?;
 
 -- name: RemoveAllPrograms :exec
 DELETE FROM tracked_programs;
+
+-- name: ResetLifetimeForProgram :exec
+UPDATE tracked_programs 
+SET lifetime_seconds = 0 
+WHERE name = ?;
+
+-- name: ResetAllLifetimes :exec
+UPDATE tracked_programs 
+SET lifetime_seconds = 0;

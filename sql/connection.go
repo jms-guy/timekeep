@@ -3,8 +3,11 @@ package sql
 import (
 	"database/sql"
 	"embed"
+	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/jms-guy/timekeep/internal/database"
 	"github.com/pressly/goose/v3"
@@ -14,9 +17,16 @@ import (
 var embedMigrations embed.FS
 
 func OpenLocalDatabase() (*database.Queries, error) {
-	localDb := "timekeep.db"
+	dbPath, err := getDatabasePath()
+	if err != nil {
+		return nil, err
+	}
 
-	db, err := sql.Open("sqlite", localDb)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	}
+
+	db, err := sql.Open("sqlite", dbPath+"?_busy_timeout=5000&_journal_mode=WAL")
 	if err != nil {
 		return nil, err
 	}
@@ -35,4 +45,10 @@ func OpenLocalDatabase() (*database.Queries, error) {
 	queries := database.New(db)
 
 	return queries, nil
+}
+
+// Gets database directory path for Windows
+func getDatabasePath() (string, error) {
+	dataDir := `C:\ProgramData\TimeKeep`
+	return filepath.Join(dataDir, "timekeep.db"), nil
 }

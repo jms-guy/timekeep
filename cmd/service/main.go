@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+
+	_ "modernc.org/sqlite"
 )
 
 func main() {

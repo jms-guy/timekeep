@@ -1,7 +1,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/jms-guy/timekeep/internal/database"
+	mysql "github.com/jms-guy/timekeep/sql"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +18,16 @@ type Command struct {
 	ProcessID   int    `json:"pid,omitempty"`
 }
 
-func NewService() *CLIService {
-	return &CLIService{}
+func NewService() (*CLIService, error) {
+	db, err := mysql.OpenLocalDatabase()
+	if err != nil {
+		return nil, err
+	}
+
+	s := CLIService{
+		db: db,
+	}
+	return &s, nil
 }
 
 func (s *CLIService) RootCmd() *cobra.Command {
@@ -34,13 +45,17 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.statsCmd())
 	rootCmd.AddCommand(s.sessionHistoryCmd())
 	rootCmd.AddCommand(s.refreshCmd())
+	rootCmd.AddCommand(s.resetStatsCmd())
 
 	return rootCmd
 }
 
 func Execute() {
-	cliService := NewService()
+	cliService, err := NewService()
+	if err != nil {
+		os.Exit(1)
+	}
 	if err := cliService.RootCmd().Execute(); err != nil {
-		return
+		os.Exit(1)
 	}
 }

@@ -6,10 +6,12 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +52,16 @@ func NewTimekeepService() (*timekeepService, error) {
 		return nil, err
 	}
 
-	f, err := os.OpenFile("timekeep.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	logPath, err := getLogPath()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +75,11 @@ func NewTimekeepService() (*timekeepService, error) {
 		activeSessions: make(map[string]map[string]bool),
 		shutdown:       make(chan struct{}),
 	}, nil
+}
+
+func getLogPath() (string, error) {
+	logDir := `C:\ProgramData\TimeKeep\logs`
+	return filepath.Join(logDir, "timekeep.log"), nil
 }
 
 func RunService(name string, isDebug bool) error {

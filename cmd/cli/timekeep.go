@@ -1,6 +1,10 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 func (s *CLIService) addProgramsCmd() *cobra.Command {
 	return &cobra.Command{
@@ -16,16 +20,22 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 }
 
 func (s *CLIService) removeProgramsCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"Remove", "REMOVE"},
 		Short:   "Remove a program from tracking list",
-		Long:    "User may specify multiple programs to remove, as long as they're seperated by a space",
+		Long:    "User may specify multiple programs to remove, as long as they're seperated by a space. May provide the --all flag to remove all programs from tracking list",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.removePrograms(args)
+			all, _ := cmd.Flags().GetBool("all")
+
+			return s.removePrograms(args, all)
 		},
 	}
+
+	cmd.Flags().Bool("all", false, "When provided removes all currently tracked programs")
+
+	return cmd
 }
 
 func (s *CLIService) getListcmd() *cobra.Command {
@@ -76,7 +86,31 @@ func (s *CLIService) refreshCmd() *cobra.Command {
 		Short:   "Sends a manual refresh command to the service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return WriteToService()
+			err := WriteToService()
+			if err != nil {
+				return err
+			}
+			fmt.Println("Service refresh command sent successfully")
+			return nil
 		},
 	}
+}
+
+func (s *CLIService) resetStatsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "reset",
+		Aliases: []string{"Reset", "RESET"},
+		Short:   "Reset tracking stats",
+		Long:    "Reset tracking stats for given programs, accepts multiple programs with a space between them. May provide the --all flag to reset all stats",
+		Args:    cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			all, _ := cmd.Flags().GetBool("all")
+
+			return s.resetStats(args, all)
+		},
+	}
+
+	cmd.Flags().Bool("all", false, "If flag is provided, resets all currently tracked program data. Does not remove programs from tracking")
+
+	return cmd
 }

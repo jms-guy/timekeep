@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -27,7 +28,22 @@ func (s *CLIService) addPrograms(args []string) error {
 }
 
 // Removes programs from database, and tells service to stop tracking them
-func (s *CLIService) removePrograms(args []string) error {
+func (s *CLIService) removePrograms(args []string, all bool) error {
+	if all {
+		err := s.db.RemoveAllPrograms(context.Background())
+		if err != nil {
+			return fmt.Errorf("error removing all programs: %w", err)
+		}
+
+		err = WriteToService()
+		if err != nil {
+			return fmt.Errorf("error alerting service of program removal: %w", err)
+		}
+
+		fmt.Println("All programs removed from tracking")
+		return nil
+	}
+
 	var removedPrograms []string
 	for _, program := range args {
 		err := s.db.RemoveProgram(context.Background(), program)
@@ -106,28 +122,38 @@ func (s *CLIService) getStats(args []string) error {
 
 	lastSession, err := s.db.GetLastSessionForProgram(context.Background(), program.Name)
 	if err != nil {
-		return fmt.Errorf("error getting last session for %s: %w", program.Name, err)
+		if err == sql.ErrNoRows {
+			fmt.Printf("Statistics for %s:\n", program.Name)
+			s.formatDuration(" • Current Lifetime: ", duration)
+			fmt.Printf(" • Total sessions to date: 0\n")
+			fmt.Printf(" • Last Session: No sessions recorded yet\n")
+			return nil
+		} else {
+			return fmt.Errorf("error getting last session for %s: %w", program.Name, err)
+		}
 	}
-	lastDuration := time.Duration(lastSession.DurationSeconds) * time.Second
 
 	sessionCount, err := s.db.GetCountOfSessionsForProgram(context.Background(), program.Name)
 	if err != nil {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
 
-	fmt.Printf("Statistics for %s: \n", program.Name)
-	if duration < time.Minute {
-		fmt.Printf(" • Current Lifetime: %d seconds\n", int(duration.Seconds()))
-	} else if duration < time.Hour {
-		fmt.Printf(" • Current Lifetime: %d minutes\n", int(duration.Minutes()))
-	} else {
-		hours := int(duration.Hours())
-		minutes := int(duration.Minutes()) % 60
-		fmt.Printf(" • Current Lifetime: %dh %dm\n", hours, minutes)
+	fmt.Printf("Statistics for %s:\n", program.Name)
+	s.formatDuration(" • Current Lifetime: ", duration)
+	fmt.Printf(" • Total sessions to date: %d\n", sessionCount)
+
+	lastDuration := time.Duration(lastSession.DurationSeconds) * time.Second
+	fmt.Printf(" • Last Session: %s - %s ",
+		lastSession.StartTime.Format("2006-01-02 15:04"),
+		lastSession.EndTime.Format("2006-01-02 15:04"))
+	s.formatDuration("(", lastDuration)
+	fmt.Printf(")\n")
+
+	if sessionCount > 0 {
+		avgSeconds := program.LifetimeSeconds / sessionCount
+		avgDuration := time.Duration(avgSeconds) * time.Second
+		s.formatDuration(" • Average session length: ", avgDuration)
 	}
-	fmt.Printf(" • Total sessions to date: %d\n", int(sessionCount))
-	fmt.Printf(" • Last Session: %v - %v (%d)\n", lastSession.StartTime, lastSession.EndTime, int(lastDuration.Minutes()))
-	// Add average session length
 
 	return nil
 }
@@ -146,7 +172,102 @@ func (s *CLIService) getSessionHistory(args []string) error {
 	fmt.Printf("Session history for %s: \n", args[0])
 	for _, session := range history {
 		duration := time.Duration(session.DurationSeconds) * time.Second
-		fmt.Printf("ID: %d | Start Time: %v | End Time: %v | Duration: %d\n", session.ID, session.StartTime, session.EndTime, int(duration.Minutes()))
+		fmt.Printf("  ID: %d | %s - %s | Duration: ",
+			session.ID,
+			session.StartTime.Format("2006-01-02 15:04"),
+			session.EndTime.Format("2006-01-02 15:04"))
+
+		if duration < time.Minute {
+			fmt.Printf("%d seconds\n", int(duration.Seconds()))
+		} else if duration < time.Hour {
+			fmt.Printf("%d minutes\n", int(duration.Minutes()))
+		} else {
+			hours := int(duration.Hours())
+			minutes := int(duration.Minutes()) % 60
+			fmt.Printf("%dh %dm\n", hours, minutes)
+		}
+	}
+
+	return nil
+}
+
+// Reset tracked program session records
+func (s *CLIService) resetStats(args []string, all bool) error {
+	if all {
+		err := s.resetAllDatabase()
+		if err != nil {
+			return err
+		}
+		fmt.Println("All session records reset")
+
+	} else {
+		if len(args) == 0 {
+			fmt.Println("No arguments given to reset")
+			return nil
+		}
+
+		for _, program := range args {
+			err := s.resetDatabaseForProgram(program)
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Printf("Session records for %d programs reset", len(args))
+	}
+
+	err := WriteToService()
+	if err != nil {
+		fmt.Printf("Warning: Failed to notify service of reset: %v\n", err)
+	}
+
+	return nil
+}
+
+// Formats a time.Duration value to display hours, minutes or seconds
+func (s *CLIService) formatDuration(prefix string, duration time.Duration) {
+	if duration < time.Minute {
+		fmt.Printf("%s%d seconds\n", prefix, int(duration.Seconds()))
+	} else if duration < time.Hour {
+		fmt.Printf("%s%d minutes\n", prefix, int(duration.Minutes()))
+	} else {
+		hours := int(duration.Hours())
+		minutes := int(duration.Minutes()) % 60
+		fmt.Printf("%s%dh %dm\n", prefix, hours, minutes)
+	}
+}
+
+// Removes active session and session records for all programs
+func (s *CLIService) resetAllDatabase() error {
+	err := s.db.RemoveAllSessions(context.Background())
+	if err != nil {
+		return fmt.Errorf("error removing all active sessions: %w", err)
+	}
+	err = s.db.RemoveAllRecords(context.Background())
+	if err != nil {
+		return fmt.Errorf("error removing all session records: %w", err)
+	}
+	err = s.db.ResetAllLifetimes(context.Background())
+	if err != nil {
+		return fmt.Errorf("error resetting lifetime values: %w", err)
+	}
+
+	return nil
+}
+
+// Removes Removes active session and session records for single program
+func (s *CLIService) resetDatabaseForProgram(program string) error {
+	err := s.db.RemoveActiveSession(context.Background(), program)
+	if err != nil {
+		return fmt.Errorf("error removing active session for %s: %w", program, err)
+	}
+	err = s.db.RemoveRecordsForProgram(context.Background(), program)
+	if err != nil {
+		return fmt.Errorf("error removing session records for %s: %w", program, err)
+	}
+	err = s.db.ResetLifetimeForProgram(context.Background(), program)
+	if err != nil {
+		return fmt.Errorf("error resetting lifetime for %s: %w", program, err)
 	}
 
 	return nil

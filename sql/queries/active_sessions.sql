@@ -9,3 +9,6 @@ WHERE program_name = ?;
 -- name: RemoveActiveSession :exec
 DELETE FROM active_sessions
 WHERE program_name = ?;
+
+-- name: RemoveAllSessions :exec
+DELETE FROM active_sessions;
