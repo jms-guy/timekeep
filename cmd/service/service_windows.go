@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -58,7 +60,7 @@ func NewTimekeepService() (*timekeepService, error) {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
-		return nil, fmt.Errorf("failed to create log directory: %w", err)
+		return nil, fmt.Errorf("ERROR: failed to create log directory: %w", err)
 	}
 
 	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -96,6 +98,12 @@ func RunService(name string, isDebug bool) error {
 
 // Service execute method for Windows Handler interface
 func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
+	s.logger.Println("INFO: Service Execute function entered.")
+
+	err := s.logFile.Sync()
+	if err != nil {
+		s.logger.Printf("ERROR: Failed to sync log file: %v", err) // Log this error too!
+	}
 
 	//Signals that service can accept from SCM(Service Control Manager)
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
@@ -105,7 +113,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	programs, err := s.db.GetAllProgramNames(context.Background())
 	if err != nil {
-		s.logger.Printf("Failed to get programs: %s", err)
+		s.logger.Printf("ERROR: Failed to get programs: %s", err)
 		return false, 1
 	}
 	if len(programs) > 0 {
@@ -131,7 +139,7 @@ loop:
 			case svc.Continue: //Resume paused execution state of service
 				status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
-				s.logger.Printf("Unexpected service control request #%d", c)
+				s.logger.Printf("ERROR: Unexpected service control request #%d", c)
 			}
 		}
 	}
@@ -142,11 +150,11 @@ loop:
 
 // Opens a Windows named pipe connection, to listen for commands
 func (s *timekeepService) listenPipe() {
-	pipeName := `\\.\pipe\Timekeep`
+	pipeName := "\\\\.\\pipe\\Timekeep"
 
 	pipe, err := winio.ListenPipe(pipeName, nil)
 	if err != nil {
-		s.logger.Printf("Failed to create pipe: %s", err)
+		s.logger.Printf("ERROR: Failed to create pipe: %s", err)
 		return
 	}
 	defer pipe.Close()
@@ -158,7 +166,7 @@ func (s *timekeepService) listenPipe() {
 		default:
 			conn, err := pipe.Accept()
 			if err != nil {
-				s.logger.Printf("Failed to accept connection: %s", err)
+				s.logger.Printf("ERROR: Failed to accept connection: %s", err)
 				continue
 			}
 			go s.handlePipeConnection(conn)
@@ -170,23 +178,39 @@ func (s *timekeepService) listenPipe() {
 func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 	defer conn.Close()
 
-	var cmd Command
-	decoder := json.NewDecoder(conn)
+	s.logger.Println("INFO: handlePipeConnection: Starting to read from pipe.")
 
-	if err := decoder.Decode(&cmd); err != nil {
-		s.logger.Printf("Failed to decode command: %s", err)
-		return
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		var cmd Command
+		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+			s.logger.Printf("ERROR: Failed to unmarshal JSON from line '%s': %s", line, err)
+			continue
+		}
+
+		cmd.ProcessName = strings.ToLower(cmd.ProcessName)
+
+		switch cmd.Action {
+		case "process_start":
+			pid := strconv.Itoa(cmd.ProcessID)
+			s.createSession(cmd.ProcessName, pid)
+			s.logger.Printf("INFO: handlePipeConnection: Called createSession for %s (PID: %s)", cmd.ProcessName, pid)
+		case "process_stop":
+			pid := strconv.Itoa(cmd.ProcessID)
+			s.endSession(cmd.ProcessName, pid)
+			s.logger.Printf("INFO: handlePipeConnection: Called endSession for %s (PID: %s)", cmd.ProcessName, pid)
+		case "refresh":
+			s.refreshProcessMonitor()
+			s.logger.Println("INFO: Called refreshProcessMonitor")
+		default:
+			s.logger.Printf("WARN: handlePipeConnection: Received unknown command action: %s", cmd.Action)
+		}
 	}
 
-	switch cmd.Action {
-	case "process_start":
-		pid := strconv.Itoa(cmd.ProcessID)
-		s.createSession(cmd.ProcessName, pid)
-	case "process_stop":
-		pid := strconv.Itoa(cmd.ProcessID)
-		s.endSession(cmd.ProcessName, pid)
-	case "refresh":
-		s.refreshProcessMonitor()
+	if err := scanner.Err(); err != nil {
+		s.logger.Printf("ERROR: handlePipeConnection: Error reading from pipe: %s", err)
 	}
 }
 
@@ -194,32 +218,74 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 func (s *timekeepService) startProcessMonitor(programs []string) {
 	programList := strings.Join(programs, ",")
 
-	tempFile, err := os.CreateTemp("", "monitor*.ps1")
-	if err != nil {
-		s.logger.Printf("Failed to create temp script file: %s", err)
+	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")
+
+	if err := os.MkdirAll(scriptTempDir, 0755); err != nil {
+		s.logger.Printf("ERROR: Failed to create PowerShell script temp directory '%s': %s", scriptTempDir, err)
 		return
 	}
+
+	tempFile, err := os.CreateTemp(scriptTempDir, "monitor*.ps1")
+	if err != nil {
+		s.logger.Printf("ERROR: Failed to create temp script file in '%s': %s", scriptTempDir, err)
+		return
+	}
+
 	defer tempFile.Close()
 
 	if _, err := tempFile.WriteString(monitorScript); err != nil {
-		s.logger.Printf("Failed to write script: %s", err)
+		s.logger.Printf("ERROR: Failed to write script: %s", err)
 		return
 	}
 
-	cmd := exec.Command("powershell", "-File", tempFile.Name(), "-Programs", programList)
+	if err := tempFile.Sync(); err != nil {
+		s.logger.Printf("ERROR: Failed to sync temp script file to disk: %s", err)
+		return
+	}
+
+	tempFile.Close()
+
+	time.Sleep(100 * time.Millisecond) // Pause to allow tempfile to finish writing before it attempts to execute
+
+	args := []string{"-ExecutionPolicy", "Bypass", "-File", tempFile.Name(), "-Programs", programList}
+	cmd := exec.Command("powershell", args...)
 	s.psProcess = cmd
 
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
 	if err := cmd.Start(); err != nil {
-		s.logger.Printf("Failed to start PowerShell monitor: %s", err)
+		s.logger.Printf("ERROR: Failed to start PowerShell monitor: %s", err)
 		s.psProcess = nil
+		if stderr.Len() > 0 {
+			s.logger.Printf("INFO: PowerShell stderr (on Start() failure): %s", stderr.String())
+		}
 	}
+
+	// Goroutine to wait for the PowerShell process to exit and log its stderr/stdout
+	go func() {
+		defer os.Remove(tempFile.Name())
+
+		err := cmd.Wait()
+		if err != nil {
+			s.logger.Printf("ERROR: PowerShell monitor process exited with error: %s", err)
+		} else {
+			s.logger.Println("INFO: PowerShell monitor process exited successfully.")
+		}
+
+		if stderr.Len() > 0 {
+			s.logger.Printf("PowerShell stderr output: %s", stderr.String())
+		} else {
+			s.logger.Println("INFO: No PowerShell stderr output.")
+		}
+	}()
 }
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (s *timekeepService) refreshProcessMonitor() {
 	programs, err := s.db.GetAllProgramNames(context.Background())
 	if err != nil {
-		s.logger.Printf("Failed to get programs: %s", err)
+		s.logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
 	}
 
@@ -229,13 +295,13 @@ func (s *timekeepService) refreshProcessMonitor() {
 		s.startProcessMonitor(programs)
 	}
 
-	s.logger.Printf("Process monitor refresh with %d programs", len(programs))
+	s.logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))
 }
 
 // Stops the WMI powershell script
 func (s *timekeepService) stopProcessMonitor() {
 	if s.psProcess != nil {
-		s.psProcess.Process.Signal(os.Interrupt)
+		s.psProcess.Process.Kill()
 		s.psProcess = nil
 	}
 }
@@ -247,7 +313,7 @@ func (s *timekeepService) createSession(processName string, processID string) {
 
 	if exists {
 		pidMap[processID] = true
-		s.logger.Printf("Added PID %s to existing session for %s", processID, processName)
+		s.logger.Printf("INFO: Added PID %s to existing session for %s", processID, processName)
 	} else {
 		s.activeSessions[processName] = make(map[string]bool)
 		s.activeSessions[processName][processID] = true
@@ -259,11 +325,11 @@ func (s *timekeepService) createSession(processName string, processID string) {
 
 		err := s.db.CreateActiveSession(context.Background(), sessionParams)
 		if err != nil {
-			s.logger.Printf("Error creating active session for process: %s", processName)
+			s.logger.Printf("ERROR: Error creating active session for process: %s", processName)
 			return
 		}
 
-		s.logger.Printf("Created new session for %s with PID %s", processName, processID)
+		s.logger.Printf("INFO: Created new session for %s with PID %s", processName, processID)
 	}
 }
 
@@ -272,13 +338,13 @@ func (s *timekeepService) createSession(processName string, processID string) {
 func (s *timekeepService) endSession(processName, processID string) {
 	session, ok := s.activeSessions[processName] // Make sure there is a valid active session
 	if !ok {
-		s.logger.Printf("Error ending session: No active session for %s", processName)
+		s.logger.Printf("ERROR: Error ending session: No active session for %s", processName)
 		return
 	}
 
 	_, ok = session[processID] // Make sure the processID is correctly present in session
 	if !ok {
-		s.logger.Printf("Error ending session: PID %s is not present in session map", processID)
+		s.logger.Printf("ERROR: Error ending session: PID %s is not present in session map", processID)
 		return
 	}
 
@@ -294,7 +360,7 @@ func (s *timekeepService) endSession(processName, processID string) {
 func (s *timekeepService) moveSessionToHistory(processName string) {
 	startTime, err := s.db.GetActiveSession(context.Background(), processName)
 	if err != nil {
-		s.logger.Printf("Error getting active session from database: %s", err)
+		s.logger.Printf("ERROR: Error getting active session from database: %s", err)
 		return
 	}
 	endTime := time.Now().UTC()
@@ -308,7 +374,7 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 	}
 	err = s.db.AddToSessionHistory(context.Background(), archivedSession)
 	if err != nil {
-		s.logger.Printf("Error creating session history for %s: %s", processName, err)
+		s.logger.Printf("ERROR: Error creating session history for %s: %s", processName, err)
 		return
 	}
 
@@ -317,20 +383,21 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 		LifetimeSeconds: duration,
 	})
 	if err != nil {
-		s.logger.Printf("Error updating lifetime for %s: %s", processName, err)
+		s.logger.Printf("ERROR: Error updating lifetime for %s: %s", processName, err)
 	}
 
 	err = s.db.RemoveActiveSession(context.Background(), processName)
 	if err != nil {
-		s.logger.Printf("Error removing active session for %s: %s", processName, err)
+		s.logger.Printf("ERROR: Error removing active session for %s: %s", processName, err)
 	}
 
-	s.logger.Printf("Moved session for %s to history (duration: %d seconds)", processName, duration)
+	s.logger.Printf("INFO: Moved session for %s to history (duration: %d seconds)", processName, duration)
 }
 
 // Closes any open log files
 func (s *timekeepService) fileCleanup() {
 	if s.logFile != nil {
+		s.logger.Println("INFO: Closing log file connection")
 		s.logFile.Close()
 	}
 }

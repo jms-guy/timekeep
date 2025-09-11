@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jms-guy/timekeep/internal/database"
 	mysql "github.com/jms-guy/timekeep/sql"
 	"github.com/spf13/cobra"
+	_ "modernc.org/sqlite"
 )
 
 type CLIService struct {
@@ -53,9 +55,11 @@ func (s *CLIService) RootCmd() *cobra.Command {
 func Execute() {
 	cliService, err := NewService()
 	if err != nil {
+		fmt.Printf("Failed to initialize CLI service: %v\n", err)
 		os.Exit(1)
 	}
 	if err := cliService.RootCmd().Execute(); err != nil {
+		fmt.Printf("Command execution failed: %v\n", err)
 		os.Exit(1)
 	}
 }

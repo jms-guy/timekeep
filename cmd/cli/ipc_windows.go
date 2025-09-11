@@ -11,7 +11,7 @@ import (
 
 // Connects to named pipe opened by main service, to communicate an action to the service
 func WriteToService() error {
-	pipeName := `\\.\pipe\Timekeep`
+	pipeName := "\\\\.\\pipe\\Timekeep"
 
 	msg := Command{
 		Action: "refresh",

@@ -29,7 +29,8 @@ Register-WmiEvent -Query $startQuery -Action {
         name = $processName
         pid = $processID
     }
-    $writer.WriteLine(($data | ConvertTo-Json))
+    $writer.WriteLine(($data | ConvertTo-Json -Compress))
+    $writer.Flush()
 }
 
 Register-WmiEvent -Query $stopQuery -Action {
@@ -41,5 +42,10 @@ Register-WmiEvent -Query $stopQuery -Action {
         name = $processName
         pid = $processID
     }
-    $writer.WriteLine(($data | ConvertTo-Json))
+    $writer.WriteLine(($data | ConvertTo-Json -Compress))
+     $writer.Flush()
+}
+
+while ($true) {
+    Start-Sleep -Seconds 1
 }
