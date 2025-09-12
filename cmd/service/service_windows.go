@@ -8,8 +8,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -20,7 +18,6 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"github.com/jms-guy/timekeep/internal/database"
-	mysql "github.com/jms-guy/timekeep/sql"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
 )
@@ -30,16 +27,6 @@ const serviceName = "Timekeep"
 //go:embed monitor.ps1
 var monitorScript string
 
-// Service context
-type timekeepService struct {
-	db             *database.Queries          // SQLC database queries
-	logger         *log.Logger                // Logging object
-	logFile        *os.File                   // Reference to the output log file
-	psProcess      *exec.Cmd                  // The running WMI powershell script
-	activeSessions map[string]map[string]bool // Map of active sessions & their PIDs
-	shutdown       chan struct{}              // Shutdown channel
-}
-
 // Command details communicated by pipe
 type Command struct {
 	Action      string `json:"action"`
@@ -47,45 +34,8 @@ type Command struct {
 	ProcessID   int    `json:"pid,omitempty"`
 }
 
-// Creates new service instance
-func NewTimekeepService() (*timekeepService, error) {
-	db, err := mysql.OpenLocalDatabase()
-	if err != nil {
-		return nil, err
-	}
-
-	logPath, err := getLogPath()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
-		return nil, fmt.Errorf("ERROR: failed to create log directory: %w", err)
-	}
-
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	logger := log.New(f, "Timekeep: ", log.LstdFlags)
-
-	return &timekeepService{
-		db:             db,
-		logger:         logger,
-		logFile:        f,
-		activeSessions: make(map[string]map[string]bool),
-		shutdown:       make(chan struct{}),
-	}, nil
-}
-
-func getLogPath() (string, error) {
-	logDir := `C:\ProgramData\TimeKeep\logs`
-	return filepath.Join(logDir, "timekeep.log"), nil
-}
-
 func RunService(name string, isDebug bool) error {
-	service, err := NewTimekeepService()
+	service, err := ServiceSetup()
 	if err != nil {
 		return err
 	}
@@ -111,7 +61,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	status <- svc.Status{State: svc.StartPending}
 	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	programs, err := s.db.GetAllProgramNames(context.Background())
+	programs, err := s.prRepo.GetAllProgramNames(context.Background())
 	if err != nil {
 		s.logger.Printf("ERROR: Failed to get programs: %s", err)
 		return false, 1
@@ -283,7 +233,7 @@ func (s *timekeepService) startProcessMonitor(programs []string) {
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (s *timekeepService) refreshProcessMonitor() {
-	programs, err := s.db.GetAllProgramNames(context.Background())
+	programs, err := s.prRepo.GetAllProgramNames(context.Background())
 	if err != nil {
 		s.logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
@@ -323,7 +273,7 @@ func (s *timekeepService) createSession(processName string, processID string) {
 			StartTime:   time.Now().UTC(),
 		}
 
-		err := s.db.CreateActiveSession(context.Background(), sessionParams)
+		err := s.asRepo.CreateActiveSession(context.Background(), sessionParams)
 		if err != nil {
 			s.logger.Printf("ERROR: Error creating active session for process: %s", processName)
 			return
@@ -358,7 +308,7 @@ func (s *timekeepService) endSession(processName, processID string) {
 
 // Takes an active session and moves it into session history, ending active status
 func (s *timekeepService) moveSessionToHistory(processName string) {
-	startTime, err := s.db.GetActiveSession(context.Background(), processName)
+	startTime, err := s.asRepo.GetActiveSession(context.Background(), processName)
 	if err != nil {
 		s.logger.Printf("ERROR: Error getting active session from database: %s", err)
 		return
@@ -372,13 +322,13 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 		EndTime:         endTime,
 		DurationSeconds: duration,
 	}
-	err = s.db.AddToSessionHistory(context.Background(), archivedSession)
+	err = s.hsRepo.AddToSessionHistory(context.Background(), archivedSession)
 	if err != nil {
 		s.logger.Printf("ERROR: Error creating session history for %s: %s", processName, err)
 		return
 	}
 
-	err = s.db.UpdateLifetime(context.Background(), database.UpdateLifetimeParams{
+	err = s.prRepo.UpdateLifetime(context.Background(), database.UpdateLifetimeParams{
 		Name:            processName,
 		LifetimeSeconds: duration,
 	})
@@ -386,7 +336,7 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 		s.logger.Printf("ERROR: Error updating lifetime for %s: %s", processName, err)
 	}
 
-	err = s.db.RemoveActiveSession(context.Background(), processName)
+	err = s.asRepo.RemoveActiveSession(context.Background(), processName)
 	if err != nil {
 		s.logger.Printf("ERROR: Error removing active session for %s: %s", processName, err)
 	}
