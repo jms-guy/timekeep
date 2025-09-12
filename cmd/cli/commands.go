@@ -11,11 +11,34 @@ import (
 	"time"
 )
 
+type ServiceState int
+
+const (
+	Ignore ServiceState = iota
+	Stopped
+	Start_Pending
+	Stop_Pending
+	Running
+	Continue_Pending
+	Pause_Pending
+	Paused
+)
+
+var stateName = map[ServiceState]string{
+	Stopped:          "Stopped",
+	Start_Pending:    "Start Pending",
+	Stop_Pending:     "Stop Pending",
+	Running:          "Running",
+	Continue_Pending: "Continue Pending",
+	Pause_Pending:    "Pause Pending",
+	Paused:           "Paused",
+}
+
 // Adds programs into the database, and sends communication to service to being tracking them
 func (s *CLIService) addPrograms(args []string) error {
 	var addedPrograms []string
 	for _, program := range args {
-		err := s.db.AddProgram(context.Background(), program)
+		err := s.prRepo.AddProgram(context.Background(), program)
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
 		}
@@ -34,7 +57,7 @@ func (s *CLIService) addPrograms(args []string) error {
 // Removes programs from database, and tells service to stop tracking them
 func (s *CLIService) removePrograms(args []string, all bool) error {
 	if all {
-		err := s.db.RemoveAllPrograms(context.Background())
+		err := s.prRepo.RemoveAllPrograms(context.Background())
 		if err != nil {
 			return fmt.Errorf("error removing all programs: %w", err)
 		}
@@ -50,7 +73,7 @@ func (s *CLIService) removePrograms(args []string, all bool) error {
 
 	var removedPrograms []string
 	for _, program := range args {
-		err := s.db.RemoveProgram(context.Background(), program)
+		err := s.prRepo.RemoveProgram(context.Background(), program)
 		if err != nil {
 			return fmt.Errorf("error removing program %s: %w", program, err)
 		}
@@ -68,7 +91,7 @@ func (s *CLIService) removePrograms(args []string, all bool) error {
 
 // Prints a list of programs currently being tracked by service
 func (s *CLIService) getList() error {
-	programs, err := s.db.GetAllProgramNames(context.Background())
+	programs, err := s.prRepo.GetAllProgramNames(context.Background())
 	if err != nil {
 		return fmt.Errorf("error getting list of programs: %w", err)
 	}
@@ -88,7 +111,7 @@ func (s *CLIService) getList() error {
 
 // Return basic list of all programs being tracked and their current lifetime in minutes
 func (s *CLIService) getAllStats() error {
-	programs, err := s.db.GetAllPrograms(context.Background())
+	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return fmt.Errorf("error getting programs list: %w", err)
 	}
@@ -117,14 +140,14 @@ func (s *CLIService) getAllStats() error {
 
 // Get detailed stats for a single tracked program
 func (s *CLIService) getStats(args []string) error {
-	program, err := s.db.GetProgramByName(context.Background(), args[0])
+	program, err := s.prRepo.GetProgramByName(context.Background(), args[0])
 	if err != nil {
 		return fmt.Errorf("error getting tracked program: %w", err)
 	}
 
 	duration := time.Duration(program.LifetimeSeconds) * time.Second
 
-	lastSession, err := s.db.GetLastSessionForProgram(context.Background(), program.Name)
+	lastSession, err := s.hsRepo.GetLastSessionForProgram(context.Background(), program.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Printf("Statistics for %s:\n", program.Name)
@@ -137,7 +160,7 @@ func (s *CLIService) getStats(args []string) error {
 		}
 	}
 
-	sessionCount, err := s.db.GetCountOfSessionsForProgram(context.Background(), program.Name)
+	sessionCount, err := s.hsRepo.GetCountOfSessionsForProgram(context.Background(), program.Name)
 	if err != nil {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
@@ -164,7 +187,7 @@ func (s *CLIService) getStats(args []string) error {
 
 // Returns session history for a given program
 func (s *CLIService) getSessionHistory(args []string) error {
-	history, err := s.db.GetAllSessionsForProgram(context.Background(), args[0])
+	history, err := s.hsRepo.GetAllSessionsForProgram(context.Background(), args[0])
 	if err != nil {
 		return fmt.Errorf("error getting session history for %s: %w", args[0], err)
 	}
@@ -243,15 +266,15 @@ func (s *CLIService) formatDuration(prefix string, duration time.Duration) {
 
 // Removes active session and session records for all programs
 func (s *CLIService) resetAllDatabase() error {
-	err := s.db.RemoveAllSessions(context.Background())
+	err := s.asRepo.RemoveAllSessions(context.Background())
 	if err != nil {
 		return fmt.Errorf("error removing all active sessions: %w", err)
 	}
-	err = s.db.RemoveAllRecords(context.Background())
+	err = s.hsRepo.RemoveAllRecords(context.Background())
 	if err != nil {
 		return fmt.Errorf("error removing all session records: %w", err)
 	}
-	err = s.db.ResetAllLifetimes(context.Background())
+	err = s.prRepo.ResetAllLifetimes(context.Background())
 	if err != nil {
 		return fmt.Errorf("error resetting lifetime values: %w", err)
 	}
@@ -261,15 +284,15 @@ func (s *CLIService) resetAllDatabase() error {
 
 // Removes Removes active session and session records for single program
 func (s *CLIService) resetDatabaseForProgram(program string) error {
-	err := s.db.RemoveActiveSession(context.Background(), program)
+	err := s.asRepo.RemoveActiveSession(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error removing active session for %s: %w", program, err)
 	}
-	err = s.db.RemoveRecordsForProgram(context.Background(), program)
+	err = s.hsRepo.RemoveRecordsForProgram(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error removing session records for %s: %w", program, err)
 	}
-	err = s.db.ResetLifetimeForProgram(context.Background(), program)
+	err = s.prRepo.ResetLifetimeForProgram(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error resetting lifetime for %s: %w", program, err)
 	}
@@ -321,27 +344,4 @@ func (s *CLIService) pingService() error {
 	}
 
 	return nil
-}
-
-type ServiceState int
-
-const (
-	Ignore ServiceState = iota
-	Stopped
-	Start_Pending
-	Stop_Pending
-	Running
-	Continue_Pending
-	Pause_Pending
-	Paused
-)
-
-var stateName = map[ServiceState]string{
-	Stopped:          "Stopped",
-	Start_Pending:    "Start Pending",
-	Stop_Pending:     "Stop Pending",
-	Running:          "Running",
-	Continue_Pending: "Continue Pending",
-	Pause_Pending:    "Pause Pending",
-	Paused:           "Paused",
 }
