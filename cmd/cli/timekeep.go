@@ -114,3 +114,15 @@ func (s *CLIService) resetStatsCmd() *cobra.Command {
 
 	return cmd
 }
+
+func (s *CLIService) pingServiceCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "ping",
+		Aliases: []string{"Query", "QUERY"},
+		Short:   "Gets current OS state of Timekeep service",
+		Args:    cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.pingService()
+		},
+	}
+}
