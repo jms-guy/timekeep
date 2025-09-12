@@ -102,7 +102,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	err := s.logFile.Sync()
 	if err != nil {
-		s.logger.Printf("ERROR: Failed to sync log file: %v", err) // Log this error too!
+		s.logger.Printf("ERROR: Failed to sync log file: %v", err)
 	}
 
 	//Signals that service can accept from SCM(Service Control Manager)
@@ -145,7 +145,7 @@ loop:
 	}
 
 	status <- svc.Status{State: svc.StopPending}
-	return false, 1
+	return false, 0
 }
 
 // Opens a Windows named pipe connection, to listen for commands
@@ -178,7 +178,7 @@ func (s *timekeepService) listenPipe() {
 func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 	defer conn.Close()
 
-	s.logger.Println("INFO: handlePipeConnection: Starting to read from pipe.")
+	s.logger.Println("INFO: Starting to read from pipe.")
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -196,21 +196,21 @@ func (s *timekeepService) handlePipeConnection(conn net.Conn) {
 		case "process_start":
 			pid := strconv.Itoa(cmd.ProcessID)
 			s.createSession(cmd.ProcessName, pid)
-			s.logger.Printf("INFO: handlePipeConnection: Called createSession for %s (PID: %s)", cmd.ProcessName, pid)
+			s.logger.Printf("INFO: Called createSession for %s (PID: %s)", cmd.ProcessName, pid)
 		case "process_stop":
 			pid := strconv.Itoa(cmd.ProcessID)
 			s.endSession(cmd.ProcessName, pid)
-			s.logger.Printf("INFO: handlePipeConnection: Called endSession for %s (PID: %s)", cmd.ProcessName, pid)
+			s.logger.Printf("INFO: Called endSession for %s (PID: %s)", cmd.ProcessName, pid)
 		case "refresh":
 			s.refreshProcessMonitor()
 			s.logger.Println("INFO: Called refreshProcessMonitor")
 		default:
-			s.logger.Printf("WARN: handlePipeConnection: Received unknown command action: %s", cmd.Action)
+			s.logger.Printf("WARN: Received unknown command action: %s", cmd.Action)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		s.logger.Printf("ERROR: handlePipeConnection: Error reading from pipe: %s", err)
+		s.logger.Printf("ERROR: Error reading from pipe: %s", err)
 	}
 }
 
@@ -301,7 +301,7 @@ func (s *timekeepService) refreshProcessMonitor() {
 // Stops the WMI powershell script
 func (s *timekeepService) stopProcessMonitor() {
 	if s.psProcess != nil {
-		s.psProcess.Process.Kill()
+		_ = s.psProcess.Process.Kill()
 		s.psProcess = nil
 	}
 }
