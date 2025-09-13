@@ -2,6 +2,6 @@
 
 package main
 
-func WriteToService() error {
+func (r *realServiceCommander) WriteToService() error {
 	return nil
 }

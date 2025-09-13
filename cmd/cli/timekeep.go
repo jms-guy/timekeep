@@ -14,7 +14,7 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 		Long:    "User may specify any number of programs to track in a single command, as long as they're seperated by a space",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.addPrograms(args)
+			return s.AddPrograms(args)
 		},
 	}
 }
@@ -29,7 +29,7 @@ func (s *CLIService) removeProgramsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			all, _ := cmd.Flags().GetBool("all")
 
-			return s.removePrograms(args, all)
+			return s.RemovePrograms(args, all)
 		},
 	}
 
@@ -45,7 +45,7 @@ func (s *CLIService) getListcmd() *cobra.Command {
 		Short:   "Lists programs being tracked by service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.getList()
+			return s.GetList()
 		},
 	}
 }
@@ -59,9 +59,9 @@ func (s *CLIService) statsCmd() *cobra.Command {
 		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return s.getAllStats()
+				return s.GetAllStats()
 			} else {
-				return s.getStats(args)
+				return s.GetStats(args)
 			}
 		},
 	}
@@ -74,7 +74,7 @@ func (s *CLIService) sessionHistoryCmd() *cobra.Command {
 		Short:   "Shows session history for a given program name",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.getSessionHistory(args)
+			return s.GetSessionHistory(args)
 		},
 	}
 }
@@ -86,7 +86,7 @@ func (s *CLIService) refreshCmd() *cobra.Command {
 		Short:   "Sends a manual refresh command to the service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := WriteToService()
+			err := s.ServiceCmd.WriteToService()
 			if err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func (s *CLIService) resetStatsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			all, _ := cmd.Flags().GetBool("all")
 
-			return s.resetStats(args, all)
+			return s.ResetStats(args, all)
 		},
 	}
 
@@ -122,7 +122,7 @@ func (s *CLIService) pingServiceCmd() *cobra.Command {
 		Short:   "Gets current OS state of Timekeep service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.pingService()
+			return s.PingService()
 		},
 	}
 }

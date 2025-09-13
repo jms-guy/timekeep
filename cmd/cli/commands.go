@@ -11,41 +11,18 @@ import (
 	"time"
 )
 
-type ServiceState int
-
-const (
-	Ignore ServiceState = iota
-	Stopped
-	Start_Pending
-	Stop_Pending
-	Running
-	Continue_Pending
-	Pause_Pending
-	Paused
-)
-
-var stateName = map[ServiceState]string{
-	Stopped:          "Stopped",
-	Start_Pending:    "Start Pending",
-	Stop_Pending:     "Stop Pending",
-	Running:          "Running",
-	Continue_Pending: "Continue Pending",
-	Pause_Pending:    "Pause Pending",
-	Paused:           "Paused",
-}
-
 // Adds programs into the database, and sends communication to service to being tracking them
-func (s *CLIService) addPrograms(args []string) error {
+func (s *CLIService) AddPrograms(args []string) error {
 	var addedPrograms []string
 	for _, program := range args {
-		err := s.prRepo.AddProgram(context.Background(), program)
+		err := s.PrRepo.AddProgram(context.Background(), program)
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
 		}
 		addedPrograms = append(addedPrograms, program)
 	}
 
-	err := WriteToService()
+	err := s.ServiceCmd.WriteToService()
 	if err != nil {
 		return fmt.Errorf("programs added but failed to notify service: %w", err)
 	}
@@ -55,14 +32,14 @@ func (s *CLIService) addPrograms(args []string) error {
 }
 
 // Removes programs from database, and tells service to stop tracking them
-func (s *CLIService) removePrograms(args []string, all bool) error {
+func (s *CLIService) RemovePrograms(args []string, all bool) error {
 	if all {
-		err := s.prRepo.RemoveAllPrograms(context.Background())
+		err := s.PrRepo.RemoveAllPrograms(context.Background())
 		if err != nil {
 			return fmt.Errorf("error removing all programs: %w", err)
 		}
 
-		err = WriteToService()
+		err = s.ServiceCmd.WriteToService()
 		if err != nil {
 			return fmt.Errorf("error alerting service of program removal: %w", err)
 		}
@@ -73,14 +50,14 @@ func (s *CLIService) removePrograms(args []string, all bool) error {
 
 	var removedPrograms []string
 	for _, program := range args {
-		err := s.prRepo.RemoveProgram(context.Background(), program)
+		err := s.PrRepo.RemoveProgram(context.Background(), program)
 		if err != nil {
 			return fmt.Errorf("error removing program %s: %w", program, err)
 		}
 		removedPrograms = append(removedPrograms, program)
 	}
 
-	err := WriteToService()
+	err := s.ServiceCmd.WriteToService()
 	if err != nil {
 		return fmt.Errorf("programs removed but failed to notify service: %w", err)
 	}
@@ -90,8 +67,8 @@ func (s *CLIService) removePrograms(args []string, all bool) error {
 }
 
 // Prints a list of programs currently being tracked by service
-func (s *CLIService) getList() error {
-	programs, err := s.prRepo.GetAllProgramNames(context.Background())
+func (s *CLIService) GetList() error {
+	programs, err := s.PrRepo.GetAllProgramNames(context.Background())
 	if err != nil {
 		return fmt.Errorf("error getting list of programs: %w", err)
 	}
@@ -110,8 +87,8 @@ func (s *CLIService) getList() error {
 }
 
 // Return basic list of all programs being tracked and their current lifetime in minutes
-func (s *CLIService) getAllStats() error {
-	programs, err := s.prRepo.GetAllPrograms(context.Background())
+func (s *CLIService) GetAllStats() error {
+	programs, err := s.PrRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return fmt.Errorf("error getting programs list: %w", err)
 	}
@@ -139,15 +116,15 @@ func (s *CLIService) getAllStats() error {
 }
 
 // Get detailed stats for a single tracked program
-func (s *CLIService) getStats(args []string) error {
-	program, err := s.prRepo.GetProgramByName(context.Background(), args[0])
+func (s *CLIService) GetStats(args []string) error {
+	program, err := s.PrRepo.GetProgramByName(context.Background(), args[0])
 	if err != nil {
 		return fmt.Errorf("error getting tracked program: %w", err)
 	}
 
 	duration := time.Duration(program.LifetimeSeconds) * time.Second
 
-	lastSession, err := s.hsRepo.GetLastSessionForProgram(context.Background(), program.Name)
+	lastSession, err := s.HsRepo.GetLastSessionForProgram(context.Background(), program.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Printf("Statistics for %s:\n", program.Name)
@@ -160,7 +137,7 @@ func (s *CLIService) getStats(args []string) error {
 		}
 	}
 
-	sessionCount, err := s.hsRepo.GetCountOfSessionsForProgram(context.Background(), program.Name)
+	sessionCount, err := s.HsRepo.GetCountOfSessionsForProgram(context.Background(), program.Name)
 	if err != nil {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
@@ -186,8 +163,8 @@ func (s *CLIService) getStats(args []string) error {
 }
 
 // Returns session history for a given program
-func (s *CLIService) getSessionHistory(args []string) error {
-	history, err := s.hsRepo.GetAllSessionsForProgram(context.Background(), args[0])
+func (s *CLIService) GetSessionHistory(args []string) error {
+	history, err := s.HsRepo.GetAllSessionsForProgram(context.Background(), args[0])
 	if err != nil {
 		return fmt.Errorf("error getting session history for %s: %w", args[0], err)
 	}
@@ -219,9 +196,9 @@ func (s *CLIService) getSessionHistory(args []string) error {
 }
 
 // Reset tracked program session records
-func (s *CLIService) resetStats(args []string, all bool) error {
+func (s *CLIService) ResetStats(args []string, all bool) error {
 	if all {
-		err := s.resetAllDatabase()
+		err := s.ResetAllDatabase()
 		if err != nil {
 			return err
 		}
@@ -234,7 +211,7 @@ func (s *CLIService) resetStats(args []string, all bool) error {
 		}
 
 		for _, program := range args {
-			err := s.resetDatabaseForProgram(program)
+			err := s.ResetDatabaseForProgram(program)
 			if err != nil {
 				return err
 			}
@@ -243,7 +220,7 @@ func (s *CLIService) resetStats(args []string, all bool) error {
 		fmt.Printf("Session records for %d programs reset", len(args))
 	}
 
-	err := WriteToService()
+	err := s.ServiceCmd.WriteToService()
 	if err != nil {
 		fmt.Printf("Warning: Failed to notify service of reset: %v\n", err)
 	}
@@ -265,16 +242,16 @@ func (s *CLIService) formatDuration(prefix string, duration time.Duration) {
 }
 
 // Removes active session and session records for all programs
-func (s *CLIService) resetAllDatabase() error {
-	err := s.asRepo.RemoveAllSessions(context.Background())
+func (s *CLIService) ResetAllDatabase() error {
+	err := s.AsRepo.RemoveAllSessions(context.Background())
 	if err != nil {
 		return fmt.Errorf("error removing all active sessions: %w", err)
 	}
-	err = s.hsRepo.RemoveAllRecords(context.Background())
+	err = s.HsRepo.RemoveAllRecords(context.Background())
 	if err != nil {
 		return fmt.Errorf("error removing all session records: %w", err)
 	}
-	err = s.prRepo.ResetAllLifetimes(context.Background())
+	err = s.PrRepo.ResetAllLifetimes(context.Background())
 	if err != nil {
 		return fmt.Errorf("error resetting lifetime values: %w", err)
 	}
@@ -283,16 +260,16 @@ func (s *CLIService) resetAllDatabase() error {
 }
 
 // Removes Removes active session and session records for single program
-func (s *CLIService) resetDatabaseForProgram(program string) error {
-	err := s.asRepo.RemoveActiveSession(context.Background(), program)
+func (s *CLIService) ResetDatabaseForProgram(program string) error {
+	err := s.AsRepo.RemoveActiveSession(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error removing active session for %s: %w", program, err)
 	}
-	err = s.hsRepo.RemoveRecordsForProgram(context.Background(), program)
+	err = s.HsRepo.RemoveRecordsForProgram(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error removing session records for %s: %w", program, err)
 	}
-	err = s.prRepo.ResetLifetimeForProgram(context.Background(), program)
+	err = s.PrRepo.ResetLifetimeForProgram(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error resetting lifetime for %s: %w", program, err)
 	}
@@ -301,7 +278,7 @@ func (s *CLIService) resetDatabaseForProgram(program string) error {
 }
 
 // Gets current service state for user
-func (s *CLIService) pingService() error {
+func (s *CLIService) PingService() error {
 	cmd := exec.Command("sc.exe", "query", "Timekeep")
 
 	var stdoutBuffer bytes.Buffer
