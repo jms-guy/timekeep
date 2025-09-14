@@ -41,6 +41,21 @@ func ServiceSetup() (*timekeepService, error) {
 	return service, nil
 }
 
+func TestServiceSetup() (*timekeepService, error) {
+	db, err := mysql.OpenTestDatabase()
+	if err != nil {
+		return nil, err
+	}
+
+	store := repository.NewSqliteStore(db)
+
+	logger := log.New(os.Stdout, "DEBUG: ", log.LstdFlags)
+
+	service := NewTimekeepService(store, store, store, logger, nil)
+
+	return service, nil
+}
+
 // Creates new service instance
 func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File) *timekeepService {
 	return &timekeepService{

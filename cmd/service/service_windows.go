@@ -22,8 +22,6 @@ import (
 	"golang.org/x/sys/windows/svc/debug"
 )
 
-const serviceName = "Timekeep"
-
 //go:embed monitor.ps1
 var monitorScript string
 
@@ -35,13 +33,17 @@ type Command struct {
 }
 
 func RunService(name string, isDebug *bool) error {
-	service, err := ServiceSetup()
-	if err != nil {
-		return err
-	}
 	if *isDebug {
+		service, err := TestServiceSetup()
+		if err != nil {
+			return err
+		}
 		return debug.Run(name, service)
 	} else {
+		service, err := ServiceSetup()
+		if err != nil {
+			return err
+		}
 		return svc.Run(name, service)
 	}
 }
