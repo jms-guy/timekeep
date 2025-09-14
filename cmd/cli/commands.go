@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -279,16 +277,11 @@ func (s *CLIService) ResetDatabaseForProgram(program string) error {
 
 // Gets current service state for user
 func (s *CLIService) PingService() error {
-	cmd := exec.Command("sc.exe", "query", "Timekeep")
-
-	var stdoutBuffer bytes.Buffer
-	cmd.Stdout = &stdoutBuffer
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error executing service query: %w", err)
+	stdoutResult, err := s.CmdExe.RunCommand(context.Background(), "sc.exe", "query", "Timekeep")
+	if err != nil {
+		return err
 	}
 
-	stdoutResult := stdoutBuffer.String()
 	stdoutLines := strings.Split(stdoutResult, "\n")
 
 	stateStr := ""

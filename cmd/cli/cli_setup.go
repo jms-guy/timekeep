@@ -10,15 +10,17 @@ type CLIService struct {
 	AsRepo     repository.ActiveRepository
 	HsRepo     repository.HistoryRepository
 	ServiceCmd ServiceCommander
+	CmdExe     CommandExecutor
 }
 
 // Creates new CLI service instance
-func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, sc ServiceCommander) *CLIService {
+func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, sc ServiceCommander, cmdE CommandExecutor) *CLIService {
 	return &CLIService{
 		PrRepo:     pr,
 		AsRepo:     ar,
 		HsRepo:     hr,
 		ServiceCmd: sc,
+		CmdExe:     cmdE,
 	}
 }
 
@@ -30,7 +32,7 @@ func CLIServiceSetup() (*CLIService, error) {
 
 	store := repository.NewSqliteStore(db)
 
-	service := CreateCLIService(store, store, store, &realServiceCommander{})
+	service := CreateCLIService(store, store, store, &realServiceCommander{}, &realCommandExecutor{})
 
 	return service, nil
 }
@@ -43,7 +45,7 @@ func CLITestServiceSetup() (*CLIService, error) {
 
 	store := repository.NewSqliteStore(db)
 
-	service := CreateCLIService(store, store, store, &testServiceCommander{})
+	service := CreateCLIService(store, store, store, &testServiceCommander{}, &testCommandExecutor{})
 
 	return service, nil
 }

@@ -214,3 +214,13 @@ func TestResetDatabaseForProgram(t *testing.T) {
 	history, _ := s.HsRepo.GetAllSessionsForProgram(context.Background(), "code.exe")
 	assert.Len(t, history, 0, "after reset, there should be no session history")
 }
+
+func TestPingService(t *testing.T) {
+	s, err := setupTestServiceWithPrograms(t, "notepad.exe", "code.exe")
+	if err != nil {
+		t.Fatalf("Failed to setup test service: %v", err)
+	}
+
+	err = s.PingService()
+	assert.Nil(t, err, "PingService should not err")
+}
