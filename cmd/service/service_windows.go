@@ -52,9 +52,11 @@ func RunService(name string, isDebug *bool) error {
 func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
 	s.logger.Println("INFO: Service Execute function entered.")
 
-	err := s.logFile.Sync()
-	if err != nil {
-		s.logger.Printf("ERROR: Failed to sync log file: %v", err)
+	if s.logFile != nil {
+		err := s.logFile.Sync()
+		if err != nil {
+			s.logger.Printf("ERROR: Failed to sync log file: %v", err)
+		}
 	}
 
 	// Signals that service can accept from SCM(Service Control Manager)
@@ -346,10 +348,22 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 	s.logger.Printf("INFO: Moved session for %s to history (duration: %d seconds)", processName, duration)
 }
 
+// Get path for loggin file
+func getLogPath() (string, error) {
+	logDir := `C:\ProgramData\TimeKeep\logs`
+	return filepath.Join(logDir, "timekeep.log"), nil
+}
+
 // Closes any open log files
 func (s *timekeepService) fileCleanup() {
 	if s.logFile != nil {
 		s.logger.Println("INFO: Closing log file connection")
 		s.logFile.Close()
 	}
+}
+
+// Gets database directory path for Windows
+func GetDatabasePath() (string, error) {
+	dataDir := `C:\ProgramData\TimeKeep`
+	return filepath.Join(dataDir, "timekeep.db"), nil
 }

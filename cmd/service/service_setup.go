@@ -18,7 +18,7 @@ type timekeepService struct {
 	hsRepo         repository.HistoryRepository // Repository for session_history database queries
 	logger         *log.Logger                  // Logging object
 	logFile        *os.File                     // Reference to the output log file
-	psProcess      *exec.Cmd                    // The running WMI powershell script
+	psProcess      *exec.Cmd                    // The running OS-specific script for process monitoring
 	activeSessions map[string]map[string]bool   // Map of active sessions & their PIDs
 	shutdown       chan struct{}                // Shutdown channel
 }
@@ -91,9 +91,4 @@ func NewLogger() (*log.Logger, *os.File, error) {
 	logger := log.New(f, "", log.LstdFlags)
 
 	return logger, f, nil
-}
-
-func getLogPath() (string, error) {
-	logDir := `C:\ProgramData\TimeKeep\logs`
-	return filepath.Join(logDir, "timekeep.log"), nil
 }

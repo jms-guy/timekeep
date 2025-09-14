@@ -11,3 +11,7 @@ func RunService(name string, isDebug *bool) error {
 	log.Println("Linux daemon not implemented yet")
 	return nil
 }
+
+func getLogPath() (string, error) {
+	return "", nil
+}

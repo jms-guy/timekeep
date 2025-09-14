@@ -71,9 +71,3 @@ func OpenTestDatabase() (*database.Queries, error) {
 
 	return queries, nil
 }
-
-// Gets database directory path for Windows
-func getDatabasePath() (string, error) {
-	dataDir := `C:\ProgramData\TimeKeep`
-	return filepath.Join(dataDir, "timekeep.db"), nil
-}
