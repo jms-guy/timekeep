@@ -313,7 +313,7 @@ func (s *timekeepService) moveSessionToHistory(processName string) {
 		s.logger.Printf("ERROR: Error getting active session from database: %s", err)
 		return
 	}
-	endTime := time.Now().UTC()
+	endTime := time.Now()
 	duration := int64(endTime.Sub(startTime).Seconds())
 
 	archivedSession := database.AddToSessionHistoryParams{
