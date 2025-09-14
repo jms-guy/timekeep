@@ -270,7 +270,7 @@ func (s *timekeepService) createSession(processName string, processID string) {
 
 		sessionParams := database.CreateActiveSessionParams{
 			ProgramName: processName,
-			StartTime:   time.Now().UTC(),
+			StartTime:   time.Now(),
 		}
 
 		err := s.asRepo.CreateActiveSession(context.Background(), sessionParams)
