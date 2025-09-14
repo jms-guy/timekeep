@@ -4,8 +4,10 @@ import (
 	"context"
 )
 
-type realCommandExecutor struct{}
-type testCommandExecutor struct{}
+type (
+	realCommandExecutor struct{}
+	testCommandExecutor struct{}
+)
 
 type CommandExecutor interface {
 	RunCommand(ctx context.Context, name string, args ...string) (stdout string, err error)

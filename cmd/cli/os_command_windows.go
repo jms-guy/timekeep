@@ -17,7 +17,6 @@ func (r *realCommandExecutor) RunCommand(ctx context.Context, name string, args 
 	cmd.Stderr = &stderrBuf
 
 	err = cmd.Run()
-
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			return stdoutBuf.String(), fmt.Errorf("error running external command: %w: %s", exitErr, stderrBuf.String())

@@ -14,7 +14,7 @@ import (
 // Service context
 type timekeepService struct {
 	prRepo         repository.ProgramRepository // Repository for tracked_programs database queries
-	asRepo         repository.ActiveRepository  //Repository for active_sessions database queries
+	asRepo         repository.ActiveRepository  // Repository for active_sessions database queries
 	hsRepo         repository.HistoryRepository // Repository for session_history database queries
 	logger         *log.Logger                  // Logging object
 	logFile        *os.File                     // Reference to the output log file
@@ -62,11 +62,13 @@ func NewLogger() (*log.Logger, *os.File, error) {
 		return nil, nil, err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
+	// #nosec G301
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return nil, nil, fmt.Errorf("ERROR: failed to create log directory: %w", err)
 	}
 
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// #nosec -- Log file not security issue
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
 	if err != nil {
 		return nil, nil, err
 	}

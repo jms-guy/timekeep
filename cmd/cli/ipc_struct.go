@@ -1,7 +1,9 @@
 package main
 
-type realServiceCommander struct{}
-type testServiceCommander struct{}
+type (
+	realServiceCommander struct{}
+	testServiceCommander struct{}
+)
 
 type Command struct {
 	Action      string `json:"action"`

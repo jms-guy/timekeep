@@ -34,12 +34,12 @@ type Command struct {
 	ProcessID   int    `json:"pid,omitempty"`
 }
 
-func RunService(name string, isDebug bool) error {
+func RunService(name string, isDebug *bool) error {
 	service, err := ServiceSetup()
 	if err != nil {
 		return err
 	}
-	if isDebug {
+	if *isDebug {
 		return debug.Run(name, service)
 	} else {
 		return svc.Run(name, service)
@@ -55,7 +55,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 		s.logger.Printf("ERROR: Failed to sync log file: %v", err)
 	}
 
-	//Signals that service can accept from SCM(Service Control Manager)
+	// Signals that service can accept from SCM(Service Control Manager)
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 
 	status <- svc.Status{State: svc.StartPending}
@@ -72,21 +72,21 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	go s.listenPipe()
 
-	//Service mainloop, handles only SCM signals
+	// Service mainloop, handles only SCM signals
 loop:
 	for {
 		select {
 		case c := <-r:
 			switch c.Cmd {
-			case svc.Interrogate: //Check current status of service
+			case svc.Interrogate: // Check current status of service
 				status <- c.CurrentStatus
-			case svc.Stop, svc.Shutdown: //Service needs to be stopped or shutdown
+			case svc.Stop, svc.Shutdown: // Service needs to be stopped or shutdown
 				close(s.shutdown)
 				s.fileCleanup()
 				break loop
-			case svc.Pause: //Service needs to be paused, without shutdown
+			case svc.Pause: // Service needs to be paused, without shutdown
 				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
-			case svc.Continue: //Resume paused execution state of service
+			case svc.Continue: // Resume paused execution state of service
 				status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
 				s.logger.Printf("ERROR: Unexpected service control request #%d", c)
@@ -170,7 +170,7 @@ func (s *timekeepService) startProcessMonitor(programs []string) {
 
 	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")
 
-	if err := os.MkdirAll(scriptTempDir, 0755); err != nil {
+	if err := os.MkdirAll(scriptTempDir, 0o755); err != nil {
 		s.logger.Printf("ERROR: Failed to create PowerShell script temp directory '%s': %s", scriptTempDir, err)
 		return
 	}
