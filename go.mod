@@ -7,6 +7,7 @@ require (
 	github.com/pressly/goose/v3 v3.25.0
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
+	github.com/takama/daemon v1.0.0
 	golang.org/x/sys v0.34.0
 	modernc.org/sqlite v1.38.2
 )

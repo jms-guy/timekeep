@@ -21,6 +21,7 @@ type timekeepService struct {
 	psProcess      *exec.Cmd                    // The running OS-specific script for process monitoring
 	activeSessions map[string]map[string]bool   // Map of active sessions & their PIDs
 	shutdown       chan struct{}                // Shutdown channel
+	daemon         DaemonManager                // Embedded daemon.Daemon struct wrapped by interface
 }
 
 func ServiceSetup() (*timekeepService, error) {
@@ -36,7 +37,12 @@ func ServiceSetup() (*timekeepService, error) {
 		return nil, err
 	}
 
-	service := NewTimekeepService(store, store, store, logger, f)
+	d, err := NewDaemonManager()
+	if err != nil {
+		return nil, err
+	}
+
+	service := NewTimekeepService(store, store, store, logger, f, d)
 
 	return service, nil
 }
@@ -51,13 +57,13 @@ func TestServiceSetup() (*timekeepService, error) {
 
 	logger := log.New(os.Stdout, "DEBUG: ", log.LstdFlags)
 
-	service := NewTimekeepService(store, store, store, logger, nil)
+	service := NewTimekeepService(store, store, store, logger, nil, nil)
 
 	return service, nil
 }
 
 // Creates new service instance
-func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File) *timekeepService {
+func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File, d DaemonManager) *timekeepService {
 	return &timekeepService{
 		prRepo:         pr,
 		asRepo:         ar,
@@ -67,6 +73,7 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 		psProcess:      nil,
 		activeSessions: make(map[string]map[string]bool),
 		shutdown:       make(chan struct{}),
+		daemon:         d,
 	}
 }
 
@@ -91,4 +98,19 @@ func NewLogger() (*log.Logger, *os.File, error) {
 	logger := log.New(f, "", log.LstdFlags)
 
 	return logger, f, nil
+}
+
+type DaemonManager interface {
+	Install() (string, error)
+	Remove() (string, error)
+	Start() (string, error)
+	Stop() (string, error)
+	Status() (string, error)
+}
+
+// Command details communicated by pipe
+type Command struct {
+	Action      string `json:"action"`
+	ProcessName string `json:"name,omitempty"`
+	ProcessID   int    `json:"pid,omitempty"`
 }
