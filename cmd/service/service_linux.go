@@ -3,11 +3,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -96,7 +100,34 @@ func (s *timekeepService) listenSocket() {
 }
 
 func (s *timekeepService) startProcessMonitor(programs []string) {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		s.logger.Printf("ERROR: Couldn't read /proc: %s", err)
+		return
+	}
 
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		pid, err := strconv.Atoi(name)
+		if err != nil {
+			continue
+		} // skip non-numeric dirs
+
+		commPath := filepath.Join("/proc", name, "comm")
+		b, err := os.ReadFile(commPath)
+		if err != nil {
+			// process may have exited; ignore ENOENT
+			if !errors.Is(err, fs.ErrNotExist) {
+				s.logger.Printf("read %s: %v", commPath, err)
+			}
+			continue
+		}
+		comm := strings.TrimSpace(string(b))
+		// use comm...
+	}
 }
 
 func getLogPath() (string, error) {

@@ -13,15 +13,15 @@ import (
 
 // Service context
 type timekeepService struct {
-	prRepo         repository.ProgramRepository // Repository for tracked_programs database queries
-	asRepo         repository.ActiveRepository  // Repository for active_sessions database queries
-	hsRepo         repository.HistoryRepository // Repository for session_history database queries
-	logger         *log.Logger                  // Logging object
-	logFile        *os.File                     // Reference to the output log file
-	psProcess      *exec.Cmd                    // The running OS-specific script for process monitoring
-	activeSessions map[string]map[string]bool   // Map of active sessions & their PIDs
-	shutdown       chan struct{}                // Shutdown channel
-	daemon         DaemonManager                // Embedded daemon.Daemon struct wrapped by interface
+	prRepo    repository.ProgramRepository // Repository for tracked_programs database queries
+	asRepo    repository.ActiveRepository  // Repository for active_sessions database queries
+	hsRepo    repository.HistoryRepository // Repository for session_history database queries
+	logger    *log.Logger                  // Logging object
+	logFile   *os.File                     // Reference to the output log file
+	psProcess *exec.Cmd                    // The running OS-specific script for process monitoring
+	Sessions  *SessionManager              // Managing struct for program sessions
+	shutdown  chan struct{}                // Shutdown channel
+	daemon    DaemonManager                // Embedded daemon.Daemon struct wrapped by interface
 }
 
 func ServiceSetup() (*timekeepService, error) {
@@ -42,7 +42,9 @@ func ServiceSetup() (*timekeepService, error) {
 		return nil, err
 	}
 
-	service := NewTimekeepService(store, store, store, logger, f, d)
+	sessions := NewSessionManager()
+
+	service := NewTimekeepService(store, store, store, logger, f, d, sessions)
 
 	return service, nil
 }
@@ -57,23 +59,25 @@ func TestServiceSetup() (*timekeepService, error) {
 
 	logger := log.New(os.Stdout, "DEBUG: ", log.LstdFlags)
 
-	service := NewTimekeepService(store, store, store, logger, nil, nil)
+	sessions := NewSessionManager()
+
+	service := NewTimekeepService(store, store, store, logger, nil, nil, sessions)
 
 	return service, nil
 }
 
 // Creates new service instance
-func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File, d DaemonManager) *timekeepService {
+func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File, d DaemonManager, sessions *SessionManager) *timekeepService {
 	return &timekeepService{
-		prRepo:         pr,
-		asRepo:         ar,
-		hsRepo:         hr,
-		logger:         logger,
-		logFile:        f,
-		psProcess:      nil,
-		activeSessions: make(map[string]map[string]bool),
-		shutdown:       make(chan struct{}),
-		daemon:         d,
+		prRepo:    pr,
+		asRepo:    ar,
+		hsRepo:    hr,
+		logger:    logger,
+		logFile:   f,
+		psProcess: nil,
+		Sessions:  sessions,
+		shutdown:  make(chan struct{}),
+		daemon:    d,
 	}
 }
 
