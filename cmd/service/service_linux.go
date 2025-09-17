@@ -3,15 +3,10 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"io/fs"
-	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 )
 
@@ -22,7 +17,7 @@ func RunService(name string, isDebug *bool) error {
 	}
 	status, err := service.Manage()
 	if err != nil {
-		service.logger.Printf("%s: %v", status, err)
+		service.logger.Logger.Printf("%s: %v", status, err)
 		return err
 	}
 
@@ -52,85 +47,27 @@ func (s *timekeepService) Manage() (string, error) {
 		}
 	}
 
-	// Service goroutines here
+	programs, err := s.prRepo.GetAllProgramNames(context.Background())
+	if err != nil {
+		return "ERROR: Failed to get programs", err
+	}
+	if len(programs) > 0 {
+		s.eventCtrl.StartProcessMonitor(s.logger.Logger, programs)
+	}
 
-	go s.listenSocket()
+	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 	killSignal := <-interrupt
-	s.logger.Printf("Got signal: %v", killSignal)
-	close(s.shutdown)
-	s.fileCleanup()
+	s.logger.Logger.Printf("Got signal: %v", killSignal)
+	close(s.transport.Shutdown)
+	s.logger.FileCleanup()
 
 	if killSignal == os.Interrupt {
-		return "Daemon was interrupted by system signal.", nil
+		return "INFO: Daemon was interrupted by system signal.", nil
 	}
 
-	return "Daemon was killed.", nil
-}
-
-func (s *timekeepService) listenSocket() {
-	socketName := "/tmp/timekeep.sock"
-
-	listener, err := net.Listen("unix", socketName)
-	if err != nil {
-		s.logger.Printf("ERROR: Failed to open socket connection")
-		return
-	}
-	defer os.Remove(socketName)
-	defer listener.Close()
-
-	s.logger.Printf("INFO: Listening on Unix socket: %s", socketName)
-
-	for {
-		select {
-		case <-s.shutdown:
-			return
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				s.logger.Printf("ERROR: Failed to accept connection: %s", err)
-				continue
-			}
-			go s.handleConnection(conn)
-		}
-	}
-}
-
-func (s *timekeepService) startProcessMonitor(programs []string) {
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		s.logger.Printf("ERROR: Couldn't read /proc: %s", err)
-		return
-	}
-
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		pid, err := strconv.Atoi(name)
-		if err != nil {
-			continue
-		} // skip non-numeric dirs
-
-		commPath := filepath.Join("/proc", name, "comm")
-		b, err := os.ReadFile(commPath)
-		if err != nil {
-			// process may have exited; ignore ENOENT
-			if !errors.Is(err, fs.ErrNotExist) {
-				s.logger.Printf("read %s: %v", commPath, err)
-			}
-			continue
-		}
-		comm := strings.TrimSpace(string(b))
-		// use comm...
-	}
-}
-
-func getLogPath() (string, error) {
-	logDir := "/tmp/Timekeep/logs"
-	return filepath.Join(logDir, "timekeep.log"), nil
+	return "INFO: Daemon was killed.", nil
 }

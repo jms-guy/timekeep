@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"os/exec"
-	"path/filepath"
-
+	"github.com/jms-guy/timekeep/cmd/service/internal/daemons"
+	"github.com/jms-guy/timekeep/cmd/service/internal/events"
+	"github.com/jms-guy/timekeep/cmd/service/internal/logs"
+	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
+	"github.com/jms-guy/timekeep/cmd/service/internal/transport"
 	"github.com/jms-guy/timekeep/internal/repository"
 	mysql "github.com/jms-guy/timekeep/sql"
 )
@@ -16,12 +15,11 @@ type timekeepService struct {
 	prRepo    repository.ProgramRepository // Repository for tracked_programs database queries
 	asRepo    repository.ActiveRepository  // Repository for active_sessions database queries
 	hsRepo    repository.HistoryRepository // Repository for session_history database queries
-	logger    *log.Logger                  // Logging object
-	logFile   *os.File                     // Reference to the output log file
-	psProcess *exec.Cmd                    // The running OS-specific script for process monitoring
-	Sessions  *SessionManager              // Managing struct for program sessions
-	shutdown  chan struct{}                // Shutdown channel
-	daemon    DaemonManager                // Embedded daemon.Daemon struct wrapped by interface
+	logger    *logs.Logs                   // Handles logging operations
+	eventCtrl *events.EventController      // Managing struct of OS-specific process monitoring functions & handling transport connection events
+	sessions  *sessions.SessionManager     // Managing struct for program sessions
+	transport *transport.Transporter       // Handles receiving pipe/socket commands & events
+	daemon    daemons.DaemonManager        // Embedded daemon.Daemon struct wrapped by interface
 }
 
 func ServiceSetup() (*timekeepService, error) {
@@ -32,19 +30,21 @@ func ServiceSetup() (*timekeepService, error) {
 
 	store := repository.NewSqliteStore(db)
 
-	logger, f, err := NewLogger()
+	logger, err := logs.NewLogs()
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := NewDaemonManager()
+	d, err := daemons.NewDaemonManager()
 	if err != nil {
 		return nil, err
 	}
 
-	sessions := NewSessionManager()
+	eventCtrl := events.NewEventController()
+	sessions := sessions.NewSessionManager()
+	ts := transport.NewTransporter()
 
-	service := NewTimekeepService(store, store, store, logger, f, d, sessions)
+	service := NewTimekeepService(store, store, store, logger, eventCtrl, sessions, ts, d)
 
 	return service, nil
 }
@@ -57,64 +57,25 @@ func TestServiceSetup() (*timekeepService, error) {
 
 	store := repository.NewSqliteStore(db)
 
-	logger := log.New(os.Stdout, "DEBUG: ", log.LstdFlags)
+	logger := logs.NewTestLogs()
 
-	sessions := NewSessionManager()
+	sessions := sessions.NewSessionManager()
 
-	service := NewTimekeepService(store, store, store, logger, nil, nil, sessions)
+	service := NewTimekeepService(store, store, store, logger, nil, sessions, nil, nil)
 
 	return service, nil
 }
 
 // Creates new service instance
-func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *log.Logger, f *os.File, d DaemonManager, sessions *SessionManager) *timekeepService {
+func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, logger *logs.Logs, eventCtrl *events.EventController, sessions *sessions.SessionManager, ts *transport.Transporter, d daemons.DaemonManager) *timekeepService {
 	return &timekeepService{
 		prRepo:    pr,
 		asRepo:    ar,
 		hsRepo:    hr,
 		logger:    logger,
-		logFile:   f,
-		psProcess: nil,
-		Sessions:  sessions,
-		shutdown:  make(chan struct{}),
+		eventCtrl: eventCtrl,
+		sessions:  sessions,
+		transport: ts,
 		daemon:    d,
 	}
-}
-
-// Creates logger object, and log file reference
-func NewLogger() (*log.Logger, *os.File, error) {
-	logPath, err := getLogPath()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// #nosec G301
-	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
-		return nil, nil, fmt.Errorf("ERROR: failed to create log directory: %w", err)
-	}
-
-	// #nosec -- Log file not security issue
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	logger := log.New(f, "", log.LstdFlags)
-
-	return logger, f, nil
-}
-
-type DaemonManager interface {
-	Install() (string, error)
-	Remove() (string, error)
-	Start() (string, error)
-	Stop() (string, error)
-	Status() (string, error)
-}
-
-// Command details communicated by pipe
-type Command struct {
-	Action      string `json:"action"`
-	ProcessName string `json:"name,omitempty"`
-	ProcessID   int    `json:"pid,omitempty"`
 }

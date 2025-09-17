@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package daemons
 
 import "github.com/takama/daemon"
 
