@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
@@ -53,15 +52,13 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 
 		switch cmd.Action {
 		case "process_start":
-			pid := strconv.Itoa(cmd.ProcessID)
-			s.CreateSession(logger, a, cmd.ProcessName, pid)
-			logger.Printf("INFO: Called createSession for %s (PID: %s)", cmd.ProcessName, pid)
+			s.CreateSession(logger, a, cmd.ProcessName, cmd.ProcessID)
+			logger.Printf("INFO: Called createSession for %s (PID: %d)", cmd.ProcessName, cmd.ProcessID)
 		case "process_stop":
-			pid := strconv.Itoa(cmd.ProcessID)
-			s.EndSession(logger, pr, a, h, cmd.ProcessName, pid)
-			logger.Printf("INFO: Called endSession for %s (PID: %s)", cmd.ProcessName, pid)
+			s.EndSession(logger, pr, a, h, cmd.ProcessName, cmd.ProcessID)
+			logger.Printf("INFO: Called endSession for %s (PID: %d)", cmd.ProcessName, cmd.ProcessID)
 		case "refresh":
-			e.RefreshProcessMonitor(logger, pr)
+			e.RefreshProcessMonitor(logger, s, pr, a, h)
 			logger.Println("INFO: Called refreshProcessMonitor")
 		default:
 			logger.Printf("WARN: Received unknown command action: %s", cmd.Action)
@@ -74,7 +71,7 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 }
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
-func (e *EventController) RefreshProcessMonitor(logger *log.Logger, pr repository.ProgramRepository) {
+func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	programs, err := pr.GetAllProgramNames(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
@@ -84,7 +81,7 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, pr repositor
 	e.StopProcessMonitor()
 
 	if len(programs) > 0 {
-		e.StartProcessMonitor(logger, programs)
+		e.MonitorProcesses(logger, s, pr, a, h, programs)
 	}
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))

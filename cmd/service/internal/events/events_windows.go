@@ -10,10 +10,17 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
+	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	e.startProcessMonitor(logger, programs)
+}
+
 // Runs the powershell WMI script, to monitor process events
-func (e *EventController) StartProcessMonitor(logger *log.Logger, programs []string) {
+func (e *EventController) startProcessMonitor(logger *log.Logger, programs []string) {
 	programList := strings.Join(programs, ",")
 
 	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")

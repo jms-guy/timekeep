@@ -52,7 +52,10 @@ func (s *timekeepService) Manage() (string, error) {
 		return "ERROR: Failed to get programs", err
 	}
 	if len(programs) > 0 {
-		s.eventCtrl.StartProcessMonitor(s.logger.Logger, programs)
+		for _, program := range programs {
+			s.sessions.EnsureProgram(program)
+		}
+		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
 	}
 
 	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)

@@ -51,7 +51,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 		for _, program := range programs {
 			s.sessions.EnsureProgram(program)
 		}
-		s.eventCtrl.StartProcessMonitor(s.logger.Logger, programs)
+		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
 	}
 
 	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
