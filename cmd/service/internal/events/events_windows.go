@@ -4,6 +4,7 @@ package events
 
 import (
 	"bytes"
+	_ "embed"
 	"log"
 	"os"
 	"os/exec"
@@ -14,6 +15,9 @@ import (
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
 	"github.com/jms-guy/timekeep/internal/repository"
 )
+
+//go:embed monitor.ps1
+var monitorScript string
 
 func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	e.startProcessMonitor(logger, programs)

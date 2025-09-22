@@ -18,7 +18,7 @@ type Tracked struct {
 
 type SessionManager struct {
 	Programs map[string]*Tracked
-	mu       sync.Mutex
+	Mu       sync.Mutex
 }
 
 func NewSessionManager() *SessionManager {
@@ -27,8 +27,8 @@ func NewSessionManager() *SessionManager {
 
 // Make sure map is initialized, add program to map if not already present
 func (sm *SessionManager) EnsureProgram(name string) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
+	sm.Mu.Lock()
+	defer sm.Mu.Unlock()
 
 	if sm.Programs == nil {
 		sm.Programs = make(map[string]*Tracked)
@@ -41,7 +41,7 @@ func (sm *SessionManager) EnsureProgram(name string) {
 // If no process is running with given name, will create a new active session in database.
 // If there is already a process running with given name, new PID will be added to active session
 func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveRepository, processName string, pid int) {
-	sm.mu.Lock()
+	sm.Mu.Lock()
 
 	t := sm.Programs[processName]
 	if t == nil {
@@ -50,7 +50,7 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 	}
 
 	if _, ok := t.PIDs[pid]; ok {
-		sm.mu.Unlock()
+		sm.Mu.Unlock()
 		logger.Printf("INFO: PID %d already tracked for %s", pid, processName)
 		return
 	}
@@ -62,7 +62,7 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 	}
 
 	t.LastSeen = now
-	sm.mu.Unlock()
+	sm.Mu.Unlock()
 
 	if len(t.PIDs) == 1 {
 		params := database.CreateActiveSessionParams{ProgramName: processName, StartTime: now}
@@ -79,17 +79,17 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 // Removes PID from sessions map, if there are still processes running with given name, session will not end.
 // If last process for given name ends, the active session is terminated, and session is moved into session history.
 func (sm *SessionManager) EndSession(logger *log.Logger, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, processName string, pid int) {
-	sm.mu.Lock()
+	sm.Mu.Lock()
 
 	t, ok := sm.Programs[processName]
 	if !ok {
-		sm.mu.Unlock()
+		sm.Mu.Unlock()
 		logger.Printf("INFO: No active session for %s (pid %d)", processName, pid)
 		return
 	}
 
 	if _, ok := t.PIDs[pid]; !ok {
-		sm.mu.Unlock()
+		sm.Mu.Unlock()
 		logger.Printf("INFO: PID %d not tracked for %s", pid, processName)
 		return
 	}
@@ -98,7 +98,7 @@ func (sm *SessionManager) EndSession(logger *log.Logger, pr repository.ProgramRe
 
 	now := time.Now()
 	t.LastSeen = now
-	sm.mu.Unlock()
+	sm.Mu.Unlock()
 
 	if len(t.PIDs) == 0 {
 		sm.MoveSessionToHistory(logger, pr, a, h, processName)

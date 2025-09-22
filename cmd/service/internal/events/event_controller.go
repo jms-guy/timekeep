@@ -3,7 +3,6 @@ package events
 import (
 	"bufio"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"log"
 	"net"
@@ -13,9 +12,6 @@ import (
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
 	"github.com/jms-guy/timekeep/internal/repository"
 )
-
-//go:embed monitor.ps1
-var monitorScript string
 
 // Command details communicated by pipe
 type Command struct {
