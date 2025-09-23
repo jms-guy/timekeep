@@ -11,7 +11,7 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 		Use:     "add",
 		Aliases: []string{"Add", "ADD"},
 		Short:   "Add a program name to begin tracking",
-		Long:    "User may specify any number of programs to track in a single command, as long as they're seperated by a space",
+		Long:    "User may specify any number of programs to track in a single command, as long as they're separated by a space",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.AddPrograms(args)
@@ -21,10 +21,10 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 
 func (s *CLIService) removeProgramsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "remove",
-		Aliases: []string{"Remove", "REMOVE"},
+		Use:     "rm",
+		Aliases: []string{"RM", "remove", "Remove", "REMOVE"},
 		Short:   "Remove a program from tracking list",
-		Long:    "User may specify multiple programs to remove, as long as they're seperated by a space. May provide the --all flag to remove all programs from tracking list",
+		Long:    "User may specify multiple programs to remove, as long as they're separated by a space. May provide the --all flag to remove all programs from tracking list",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			all, _ := cmd.Flags().GetBool("all")
@@ -40,8 +40,8 @@ func (s *CLIService) removeProgramsCmd() *cobra.Command {
 
 func (s *CLIService) getListcmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"List", "LIST"},
+		Use:     "ls",
+		Aliases: []string{"LS", "list", "List", "LIST"},
 		Short:   "Lists programs being tracked by service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
