@@ -110,7 +110,6 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessi
 }
 
 func (e *EventController) StopProcessMonitor() {
-
 }
 
 // Read process /proc/{pid}/exe path to get program name
