@@ -24,3 +24,5 @@ A cross-platform process activity tracker written in Go. It records start/stop e
 - Windows: embeds a PowerShell script to subscribe to WMI process start/stop events.
 - Linux: polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
 - Session model: first PID for a program starts a session; additional PIDs join it; last PID exit ends the session.
+
+## Installation
