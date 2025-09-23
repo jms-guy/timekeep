@@ -1,0 +1,15 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-binaries:
+    strategy:
+      matrix:
+        os: [windows-latest]
+        component: [service, cli]
+    
+    steps:
+      - name: Build ${{ matrix.component }} for ${{ matrix.os }}
+        run: go build -o timekeep-${{ matrix.component }} ./cmd/${{ matrix.component }}
