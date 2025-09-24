@@ -19,6 +19,7 @@ import (
 //go:embed monitor.ps1
 var monitorScript string
 
+// Main process monitoring function for Windows version
 func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	e.startProcessMonitor(logger, programs)
 }

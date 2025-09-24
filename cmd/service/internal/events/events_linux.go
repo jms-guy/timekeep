@@ -17,22 +17,33 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+// Main process monitoring function for Linux version
 func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	refreshCh := make(chan struct{})
+
 	for {
-		livePIDS := e.checkForProcessStartEvents(logger, s, pr, a, programs)
-		e.checkForProcessStopEvents(logger, s, pr, a, h, livePIDS)
-		time.Sleep(1 * time.Second)
+		select {
+		case <-refreshCh:
+			e.RefreshProcessMonitor(logger, s, pr, a, h)
+		case <-ticker.C:
+			livePIDS := e.checkForProcessStartEvents(logger, s, a, programs)
+			e.checkForProcessStopEvents(logger, s, pr, a, h, livePIDS)
+		}
 	}
 }
 
-func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, programs []string) map[int]struct{} {
+// Polls /proc and loops over PID entries, looking for any new PIDS belonging to tracked programs
+func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sessions.SessionManager, a repository.ActiveRepository, programs []string) map[int]struct{} {
 	entries, err := os.ReadDir("/proc") // Read /proc
 	if err != nil {
 		logger.Printf("ERROR: Couldn't read /proc: %s", err)
 		return nil
 	}
 
-	live := make(map[int]struct{}, len(entries))
+	live := make(map[int]struct{})
 	for _, e := range entries { // Loop over PID entries
 		if !e.IsDir() {
 			continue
@@ -47,32 +58,31 @@ func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sess
 		if err != nil {
 			continue
 		}
-		actual := filepath.Base(identity)
 
 		s.Mu.Lock()
-		_, match := s.Programs[actual] // Is program being tracked?
+		_, match := s.Programs[identity] // Is program being tracked?
 		if !match {
 			s.Mu.Unlock()
 			continue
 		}
 
-		tracked := false
-		if t := s.Programs[actual]; t != nil {
+		if t := s.Programs[identity]; t != nil {
 			if _, exists := t.PIDs[pid]; exists {
-				tracked = true
+				t.LastSeen = time.Now()
+				s.Mu.Unlock()
+				continue
 			}
 		}
 		s.Mu.Unlock()
-		if tracked {
-			continue
-		}
 
-		s.CreateSession(logger, a, actual, pid)
+		s.CreateSession(logger, a, identity, pid)
 	}
 
 	return live
 }
 
+// Takes the PID entries found in the previous check function, and compares them against map of active PIDs, to determine if
+// any active sessions need ending
 func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
 	if livePIDs == nil {
 		livePIDs = map[int]struct{}{}
@@ -146,23 +156,24 @@ func readCmdline(pid int) (string, error) {
 // Get identity of process by reading exe and cmdline paths
 func getProgramIdentity(pid int) (string, error) {
 	if exe, err := readExePath(pid); err == nil && exe != "" {
-		return exe, nil
-	} else if errors.Is(err, fs.ErrNotExist) {
+		return normalizeBase(exe), nil
+	} else if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrPermission) {
 		return "", err
 	}
-
 	if argv0, err := readCmdline(pid); err == nil && argv0 != "" {
-		return argv0, nil
-	} else if errors.Is(err, fs.ErrNotExist) {
+		return normalizeBase(argv0), nil
+	} else if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrPermission) {
 		return "", err
 	}
-
-	// Fallback to /comm
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(b)), nil
+	return normalizeBase(strings.TrimSpace(string(b))), nil
+}
+
+func normalizeBase(s string) string {
+	return strings.ToLower(filepath.Base(s))
 }
 
 func parsePID(name string) (int, bool) {

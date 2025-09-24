@@ -13,7 +13,7 @@ import (
 func (s *CLIService) AddPrograms(args []string) error {
 	var addedPrograms []string
 	for _, program := range args {
-		err := s.PrRepo.AddProgram(context.Background(), program)
+		err := s.PrRepo.AddProgram(context.Background(), strings.ToLower(program))
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
 		}
@@ -48,7 +48,7 @@ func (s *CLIService) RemovePrograms(args []string, all bool) error {
 
 	var removedPrograms []string
 	for _, program := range args {
-		err := s.PrRepo.RemoveProgram(context.Background(), program)
+		err := s.PrRepo.RemoveProgram(context.Background(), strings.ToLower(program))
 		if err != nil {
 			return fmt.Errorf("error removing program %s: %w", program, err)
 		}
@@ -115,7 +115,7 @@ func (s *CLIService) GetAllStats() error {
 
 // Get detailed stats for a single tracked program
 func (s *CLIService) GetStats(args []string) error {
-	program, err := s.PrRepo.GetProgramByName(context.Background(), args[0])
+	program, err := s.PrRepo.GetProgramByName(context.Background(), strings.ToLower(args[0]))
 	if err != nil {
 		return fmt.Errorf("error getting tracked program: %w", err)
 	}
@@ -162,7 +162,7 @@ func (s *CLIService) GetStats(args []string) error {
 
 // Returns session history for a given program
 func (s *CLIService) GetSessionHistory(args []string) error {
-	history, err := s.HsRepo.GetAllSessionsForProgram(context.Background(), args[0])
+	history, err := s.HsRepo.GetAllSessionsForProgram(context.Background(), strings.ToLower(args[0]))
 	if err != nil {
 		return fmt.Errorf("error getting session history for %s: %w", args[0], err)
 	}
@@ -209,7 +209,7 @@ func (s *CLIService) ResetStats(args []string, all bool) error {
 		}
 
 		for _, program := range args {
-			err := s.ResetDatabaseForProgram(program)
+			err := s.ResetDatabaseForProgram(strings.ToLower(program))
 			if err != nil {
 				return err
 			}
@@ -259,6 +259,8 @@ func (s *CLIService) ResetAllDatabase() error {
 
 // Removes Removes active session and session records for single program
 func (s *CLIService) ResetDatabaseForProgram(program string) error {
+	program = strings.ToLower(program)
+
 	err := s.AsRepo.RemoveActiveSession(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error removing active session for %s: %w", program, err)
