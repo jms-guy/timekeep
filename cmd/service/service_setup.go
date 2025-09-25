@@ -79,3 +79,18 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 		daemon:    d,
 	}
 }
+
+// Service shutdown function
+func (s *timekeepService) closeService() {
+	s.eventCtrl.StopProcessMonitor() // Stop any current monitoring function
+	close(s.transport.Shutdown)      // Close open IPC
+	s.logger.FileCleanup()           // Close open logging file
+
+	s.sessions.Mu.Lock()
+	for program, tracked := range s.sessions.Programs { // End any active sessions
+		if len(tracked.PIDs) != 0 {
+			s.sessions.MoveSessionToHistory(s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
+		}
+	}
+	s.sessions.Mu.Unlock()
+}

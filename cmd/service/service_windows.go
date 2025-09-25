@@ -65,8 +65,7 @@ loop:
 			case svc.Interrogate: // Check current status of service
 				status <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown: // Service needs to be stopped or shutdown
-				close(s.transport.Shutdown)
-				s.logger.FileCleanup()
+				s.closeService()
 				break loop
 			case svc.Pause: // Service needs to be paused, without shutdown
 				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}

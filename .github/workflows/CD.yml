@@ -4,12 +4,42 @@ on:
     tags: ['v*']
 
 jobs:
-  build-binaries:
-    strategy:
-      matrix:
-        os: [windows-latest]
-        component: [service, cli]
-    
+  release:
+    runs-on: ubuntu-latest
     steps:
-      - name: Build ${{ matrix.component }} for ${{ matrix.os }}
-        run: go build -o timekeep-${{ matrix.component }} ./cmd/${{ matrix.component }}
+      - uses: actions/checkout@v4
+      
+      - name: Build binaries
+        run: |
+          # Service binaries
+          GOOS=windows go build -o timekeep-service.exe ./cmd/service
+          GOOS=linux go build -o timekeepd ./cmd/service 
+          
+          # CLI binaries
+          GOOS=windows go build -o timekeep.exe ./cmd/cli
+          GOOS=linux go build -o timekeep ./cmd/cli
+          
+      - name: Prepare release assets
+        run: |
+          mkdir -p dist/windows dist/linux
+          
+          # Copy install scripts
+          cp scripts/install.ps1 dist/
+          cp scripts/install.sh dist/
+          
+          # Windows binaries
+          cp timekeep-service.exe dist/windows/
+          cp timekeep.exe dist/windows/
+          
+          # Linux binaries 
+          cp timekeepd dist/linux/
+          cp timekeep dist/linux/
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/install.ps1
+            dist/install.sh
+            dist/windows/*
+            dist/linux/*

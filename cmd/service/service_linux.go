@@ -73,18 +73,3 @@ func (s *timekeepService) Manage() (string, error) {
 
 	return "INFO: Daemon was killed.", nil
 }
-
-// Service shutdown function
-func (s *timekeepService) closeService() {
-	s.eventCtrl.StopProcessMonitor() // Stop any current polling goroutines
-	close(s.transport.Shutdown)      // Close open socket communication
-	s.logger.FileCleanup()           // Close open logging file
-
-	s.sessions.Mu.Lock()
-	for program, tracked := range s.sessions.Programs {
-		if len(tracked.PIDs) != 0 {
-			s.sessions.MoveSessionToHistory(s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
-		}
-	}
-	s.sessions.Mu.Unlock()
-}
