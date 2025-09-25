@@ -55,7 +55,7 @@ func (s *timekeepService) Manage() (string, error) {
 		for _, program := range programs {
 			s.sessions.EnsureProgram(program)
 		}
-		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
+		go s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
 	}
 
 	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
@@ -65,12 +65,26 @@ func (s *timekeepService) Manage() (string, error) {
 
 	killSignal := <-interrupt
 	s.logger.Logger.Printf("Got signal: %v", killSignal)
-	close(s.transport.Shutdown)
-	s.logger.FileCleanup()
+	s.closeService()
 
 	if killSignal == os.Interrupt {
 		return "INFO: Daemon was interrupted by system signal.", nil
 	}
 
 	return "INFO: Daemon was killed.", nil
+}
+
+// Service shutdown function
+func (s *timekeepService) closeService() {
+	s.eventCtrl.StopProcessMonitor() // Stop any current polling goroutines
+	close(s.transport.Shutdown)      // Close open socket communication
+	s.logger.FileCleanup()           // Close open logging file
+
+	s.sessions.Mu.Lock()
+	for program, tracked := range s.sessions.Programs {
+		if len(tracked.PIDs) != 0 {
+			s.sessions.MoveSessionToHistory(s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
+		}
+	}
+	s.sessions.Mu.Unlock()
 }

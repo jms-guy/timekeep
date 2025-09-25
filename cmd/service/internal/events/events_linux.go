@@ -3,6 +3,7 @@
 package events
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -19,15 +20,20 @@ import (
 
 // Main process monitoring function for Linux version
 func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	if e.cancel != nil {
+		e.cancel()
+		e.cancel = nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	e.cancel = cancel
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	refreshCh := make(chan struct{})
-
 	for {
 		select {
-		case <-refreshCh:
-			e.RefreshProcessMonitor(logger, s, pr, a, h)
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 			livePIDS := e.checkForProcessStartEvents(logger, s, a, programs)
 			e.checkForProcessStopEvents(logger, s, pr, a, h, livePIDS)
@@ -120,6 +126,10 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessi
 }
 
 func (e *EventController) StopProcessMonitor() {
+	if e.cancel != nil {
+		e.cancel()
+		e.cancel = nil
+	}
 }
 
 // Read process /proc/{pid}/exe path to get program name

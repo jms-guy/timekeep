@@ -50,6 +50,7 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 	}
 
 	if _, ok := t.PIDs[pid]; ok {
+		t.LastSeen = time.Now()
 		sm.Mu.Unlock()
 		logger.Printf("INFO: PID %d already tracked for %s", pid, processName)
 		return

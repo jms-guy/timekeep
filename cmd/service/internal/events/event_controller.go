@@ -22,6 +22,7 @@ type Command struct {
 
 type EventController struct {
 	PsProcess *exec.Cmd // Powershell process for Windows event monitoring
+	cancel    context.CancelFunc
 }
 
 func NewEventController() *EventController {
@@ -77,7 +78,7 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.
 	e.StopProcessMonitor()
 
 	if len(programs) > 0 {
-		e.MonitorProcesses(logger, s, pr, a, h, programs)
+		go e.MonitorProcesses(logger, s, pr, a, h, programs)
 	}
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))
