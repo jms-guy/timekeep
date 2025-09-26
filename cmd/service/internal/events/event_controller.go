@@ -78,6 +78,9 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.
 	e.StopProcessMonitor()
 
 	if len(programs) > 0 {
+		for _, program := range programs {
+			s.EnsureProgram(program)
+		}
 		go e.MonitorProcesses(logger, s, pr, a, h, programs)
 	}
 

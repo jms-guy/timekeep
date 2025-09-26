@@ -18,6 +18,12 @@ New-Item -ItemType Directory -Force -Path $InstallPath
 Copy-Item "$BinaryDir\timekeep-service.exe" -Destination "$InstallPath\"
 Copy-Item "$BinaryDir\timekeep.exe" -Destination "$InstallPath\"
 
+$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+if ($CurrentPath -notlike "*$InstallPath*") {
+    $NewPath = $CurrentPath + ";" + $InstallPath
+    [Environment]::SetEnvironmentVariable("Path", $NewPath, "Machine")
+}
+
 sc.exe create TimeKeep binPath= "$InstallPath\timekeep-service.exe" start= auto
 sc.exe start TimeKeep
 

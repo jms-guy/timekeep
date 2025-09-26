@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,8 @@ func (sm *SessionManager) EnsureProgram(name string) {
 	if sm.Programs == nil {
 		sm.Programs = make(map[string]*Tracked)
 	}
+
+	name = strings.ToLower(name)
 	if _, ok := sm.Programs[name]; !ok {
 		sm.Programs[name] = &Tracked{PIDs: make(map[int]struct{})}
 	}
