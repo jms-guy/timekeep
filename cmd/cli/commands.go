@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -272,47 +271,6 @@ func (s *CLIService) ResetDatabaseForProgram(program string) error {
 	err = s.PrRepo.ResetLifetimeForProgram(context.Background(), program)
 	if err != nil {
 		return fmt.Errorf("error resetting lifetime for %s: %w", program, err)
-	}
-
-	return nil
-}
-
-// Gets current service state for user
-func (s *CLIService) PingService() error {
-	stdoutResult, err := s.CmdExe.RunCommand(context.Background(), "sc.exe", "query", "Timekeep")
-	if err != nil {
-		return err
-	}
-
-	stdoutLines := strings.Split(stdoutResult, "\n")
-
-	stateStr := ""
-	for _, line := range stdoutLines {
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, "STATE") {
-			stateStr = line
-			break
-		}
-	}
-	if stateStr == "" {
-		return fmt.Errorf("missing service state value")
-	}
-
-	parts := strings.Fields(stateStr)
-	if len(parts) < 3 {
-		return fmt.Errorf("malformed state line: %s", stateStr)
-	}
-
-	stateValStr := parts[2]
-	stateNum, err := strconv.Atoi(stateValStr)
-	if err != nil {
-		return fmt.Errorf("error converting state number '%s' to integer: %w", stateValStr, err)
-	}
-
-	if state, ok := stateName[ServiceState(stateNum)]; ok {
-		fmt.Printf("Service status: %s\n", state)
-	} else {
-		fmt.Printf("Service status: Unknown state (%d)\n", stateNum)
 	}
 
 	return nil
