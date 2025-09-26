@@ -24,25 +24,35 @@ jobs:
           
       - name: Prepare release assets
         run: |
-          mkdir -p dist/windows dist/linux
+          mkdir -p timekeep-release/windows timekeep-release/linux
           
           # Copy install scripts
-          cp scripts/install.ps1 dist/
-          cp scripts/install.sh dist/
+          cp scripts/install.ps1 timekeep-release/
+          cp scripts/install.sh timekeep-release/
           
-          # Windows binaries
-          cp timekeep-service.exe dist/windows/
-          cp timekeep.exe dist/windows/
+          # Copy Windows binaries
+          cp timekeep-service.exe timekeep-release/windows/
+          cp timekeep.exe timekeep-release/windows/
           
-          # Linux binaries 
-          cp timekeepd dist/linux/
-          cp timekeep dist/linux/
+          # Copy Linux binaries
+          cp timekeepd timekeep-release/linux/
+          cp timekeep timekeep-release/linux/
+
+          cat > timekeep-release/README.txt << 'EOF'
+          TimeKeep Installation
+          ======================
+          
+          1. Extract this ZIP file
+          2. Run the appropriate install script:
+             - Windows: Right-click install.ps1 - "Run with PowerShell" as Administrator
+             - Linux: chmod +x install.sh && sudo ./install.sh
+          
+          The install script will handle everything automatically.
+          EOF
+          
+          zip -r timekeep-${{ github.ref_name }}.zip timekeep-release/
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/install.ps1
-            dist/install.sh
-            dist/windows/*
-            dist/linux/*
+          files: timekeep-${{ github.ref_name }}.zip

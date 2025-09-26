@@ -39,7 +39,7 @@ A cross-platform process activity tracker written in Go. It runs as a background
 - **Linux**: sudo privileges for systemd service setup
 
 ### Method 1: Install script
-1. Download latest release from [Releases](https://github.com/jms-guy/timekeep/releases)
+1. Download latest release ZIP from [Releases](https://github.com/jms-guy/timekeep/releases)
 2. Extract ZIP file
 3. Run the appropriate install script:
   - **Windows**: 'install.ps1' - Right click, run with PowerShell as Administrator
