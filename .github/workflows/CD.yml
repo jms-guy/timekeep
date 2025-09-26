@@ -28,6 +28,7 @@ jobs:
           
           # Copy install scripts
           cp scripts/install.ps1 timekeep-release/
+          cp scripts/install.bat timekeep-release/
           cp scripts/install.sh timekeep-release/
           
           # Copy Windows binaries
