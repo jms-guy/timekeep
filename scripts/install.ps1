@@ -24,6 +24,8 @@ if ($CurrentPath -notlike "*$InstallPath*") {
     [Environment]::SetEnvironmentVariable("Path", $NewPath, "Machine")
 }
 
+$env:Path = $env:Path + ";" + $InstallPath
+
 sc.exe create TimeKeep binPath= "$InstallPath\timekeep-service.exe" start= auto
 sc.exe start TimeKeep
 
