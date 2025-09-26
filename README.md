@@ -42,8 +42,8 @@ A cross-platform process activity tracker written in Go. It runs as a background
 1. Download latest release from [Releases](https://github.com/jms-guy/timekeep/releases)
 2. Extract ZIP file
 3. Run the appropriate install script:
-  - Windows: 'install.ps1' - Right click, run with PowerShell as Administrator
-  - Linux: 'chmod +x install.sh && sudo ./install.sh'
+  - **Windows**: 'install.ps1' - Right click, run with PowerShell as Administrator
+  - **Linux**: ```chmod +x install.sh && sudo ./install.sh```
 
 ### Method 2: Build from Source
 
