@@ -1,5 +1,9 @@
 #Requires -RunAsAdministrator
 
+if ($PSScriptRoot) {
+    Set-Location $PSScriptRoot
+}
+
 if (Test-Path "windows\timekeep-service.exe") {
     $BinaryDir = "windows"
 } elseif (Test-Path "timekeep-service.exe") {
