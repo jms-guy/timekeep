@@ -5,7 +5,7 @@
 
 # Timekeep
 
-A cross-platform process activity tracker written in Go. It runs as a background service, recording start/stop events for selected programs, aggregates active sessions, session history, and lifetime usage.
+A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage.
 
 ## Table of Contents
 - [Features](#features)
@@ -40,7 +40,7 @@ A cross-platform process activity tracker written in Go. It runs as a background
 
 ### Method 1: Install script
 1. Download latest release ZIP from [Releases](https://github.com/jms-guy/timekeep/releases)
-2. Extract ZIP file
+2. Extract ZIP
 3. Run the appropriate install script:
   - **Windows**: Double click 'install.bat'
   - **Linux**: ```chmod +x install.sh && sudo ./install.sh```
@@ -61,6 +61,11 @@ sc.exe start timekeep
 
 # Verify service is running
 Get-Service -Name "timekeep"
+```
+
+Test using CLI:
+```powershell
+.\timekeep.exe ping # Check if the service is responsive
 ```
 
 #### Linux
@@ -100,7 +105,6 @@ sudo systemctl start timekeep.service
 sudo systemctl status timekeep
 ```
 
-### Verify Installation
 Test using CLI:
 ```bash
 timekeep ping # Check if the service is responsive
@@ -126,8 +130,6 @@ sudo systemctl daemon-reload
 
 ```powershell
 timekeep add notepad.exe  # Add notepad
-timekeep add code.exe     # Add VS Code
-timekeep rm code.exe      # Remove VS Code
 timekeep ls               # List currently tracked programs
 Programs currently being tracked:
  • notepad.exe
@@ -159,7 +161,7 @@ Session history for notepad.exe:
   - enhance ping for more service info
 
 ## Contributing & Issues
-To contribute, clone the repo with ```git clone https://github.com/jms-guy/timekeep```. Please fork the repository and open a pull request to the `main` branch. Tests currently available only for CLI, run tests from base repo using ```go test ./...```
+To contribute, clone the repo with ```git clone https://github.com/jms-guy/timekeep```. Please fork the repository and open a pull request to the `main` branch. Run tests from base repo using ```go test ./...```
 
 If you have an issue, please report it [here](https://github.com/jms-guy/timekeep/issues).
 
