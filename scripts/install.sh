@@ -27,6 +27,7 @@ mkdir -p ~/.local/share/timekeep
 
 sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
 
+CURRENT_USER=$(whoami)
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
 Description=TimeKeep Process Tracker
@@ -36,8 +37,8 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
 Restart=always
-User=%U
-Group=%G
+User=$CURRENT_USER
+Group=$CURRENT_USER
 
 [Install]
 WantedBy=multi-user.target

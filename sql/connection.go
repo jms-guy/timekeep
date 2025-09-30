@@ -22,7 +22,6 @@ func OpenLocalDatabase() (*database.Queries, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Opening database at: %s\n", dbPath)
 
 	// #nosec G301
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
@@ -41,7 +40,6 @@ func OpenLocalDatabase() (*database.Queries, error) {
 		return nil, err
 	}
 
-	fmt.Printf("DEBUG: Running migrations on: %s\n", dbPath)
 	if err = goose.Up(db, "schema"); err != nil {
 		return nil, err
 	}
