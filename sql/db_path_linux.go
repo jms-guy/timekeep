@@ -4,5 +4,5 @@ package sql
 
 // Gets database directory path for Windows
 func getDatabasePath() (string, error) {
-	return "", nil
+	return "/var/lib/timekeep/timekeep.db", nil
 }

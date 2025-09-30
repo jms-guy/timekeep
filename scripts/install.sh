@@ -22,6 +22,12 @@ echo "Installing Timekeep..."
 sudo install -m 755 "$BINARY_DIR/timekeepd" /usr/local/bin/
 sudo install -m 755 "$BINARY_DIR/timekeep" /usr/local/bin/
 
+sudo mkdir -p /var/lib/timekeep
+sudo chmod 755 /var/lib/timekeep
+
+
+sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
+
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
 Description=TimeKeep Process Tracker
@@ -37,8 +43,6 @@ Group=%G
 [Install]
 WantedBy=multi-user.target
 EOF
-
-sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
 
 sudo systemctl daemon-reload
 sudo systemctl enable timekeep.service

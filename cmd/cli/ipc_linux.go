@@ -9,7 +9,8 @@ import (
 )
 
 func (r *realServiceCommander) WriteToService() error {
-	socketName := "/tmp/timekeep.sock"
+	socketDir := "/var/run/timekeep"
+	socketName := socketDir + "/timekeep.sock"
 
 	msg := Command{
 		Action: "refresh",
