@@ -22,8 +22,7 @@ echo "Installing Timekeep..."
 sudo install -m 755 "$BINARY_DIR/timekeepd" /usr/local/bin/
 sudo install -m 755 "$BINARY_DIR/timekeep" /usr/local/bin/
 
-sudo mkdir -p /var/lib/timekeep
-sudo chmod 755 /var/lib/timekeep
+mkdir -p ~/.local/share/timekeep
 
 
 sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
