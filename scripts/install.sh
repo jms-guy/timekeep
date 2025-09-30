@@ -1,12 +1,17 @@
 #!/bin/bash
 
-if [ -d "linux" ] && [ -f "timekeepd" ]; then
+if [ -d "linux" ] && [ -f "linux/timekeepd" ]; then
     BINARY_DIR="linux"
+elif [ -d "timekeep-release/linux" ] && [ -f "timekeep-release/linux/timekeepd" ]; then
+    BINARY_DIR="timekeep-release/linux"
 elif [ -f "./timekeepd" ]; then
     BINARY_DIR="."
 else
     echo "Error: Timekeep binaries not found."
-    echo "Please extract the release ZIP and run this script from the extracted directory"
+    echo "Current directory: $(pwd)"
+    echo "Available files:"
+    ls -la
+    echo "Please run this script from the extracted release directory"
     exit 1
 fi
 
@@ -26,11 +31,14 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
 Restart=always
-User=root
+User=%U
+Group=%G
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
 
 sudo systemctl daemon-reload
 sudo systemctl enable timekeep.service
