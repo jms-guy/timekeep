@@ -10,8 +10,8 @@ A process activity tracker, it runs as a background service recording start/stop
 ## Table of Contents
 - [Features](#features)
 - [How It Works](#how-it-works)
-- [Installation](#installation)
 - [Usage](#usage)
+- [Installation](#installation)
 - [Current Limitations](#current-limitations)
 - [To-Do](#to-do)
 - [Contributing & Issues](#contributing--issues)
@@ -30,6 +30,29 @@ A process activity tracker, it runs as a background service recording start/stop
 - Windows: embeds a PowerShell script to subscribe to WMI process start/stop events.
 - Linux: polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
 - Session model: first PID for a program starts a session; additional PIDs join it; last PID exit ends the session.
+
+## Usage
+
+[Commands](https://github.com/jms-guy/timekeep/blob/main/docs/commands.md)
+
+```powershell
+timekeep add notepad.exe  # Add notepad
+timekeep ls               # List currently tracked programs
+Programs currently being tracked:
+ • notepad.exe
+timekeep stats notepad.exe # Basic stats for program sessions
+Statistics for notepad.exe:
+ • Current Lifetime: 19h 41m
+ • Total sessions to date: 4
+ • Last Session: 2025-09-26 11:25 - 2025-09-26 11:26 (21 seconds)
+ • Average session length: 4h 55m
+timekeep history notepad.exe  # Session history for program
+Session history for notepad.exe:
+  ID: 9 | 2025-09-26 11:25 - 2025-09-26 11:26 | Duration: 21 seconds
+  ID: 7 | 2025-09-24 13:49 - 2025-09-24 13:50 | Duration: 39 seconds
+  ID: 4 | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
+  ID: 3 | 2025-09-22 13:08 - 2025-09-23 08:48 | Duration: 19h 39m
+```
 
 ## Installation
 
@@ -140,27 +163,6 @@ sudo systemctl disable --now timekeep
 sudo rm /etc/systemd/system/timekeep.service
 sudo rm /usr/local/bin/timekeepd /usr/local/bin/timekeep
 sudo systemctl daemon-reload
-```
-
-## Usage
-
-```powershell
-timekeep add notepad.exe  # Add notepad
-timekeep ls               # List currently tracked programs
-Programs currently being tracked:
- • notepad.exe
-timekeep stats notepad.exe # Basic stats for program sessions
-Statistics for notepad.exe:
- • Current Lifetime: 19h 41m
- • Total sessions to date: 4
- • Last Session: 2025-09-26 11:25 - 2025-09-26 11:26 (21 seconds)
- • Average session length: 4h 55m
-timekeep history notepad.exe  # Session history for program
-Session history for notepad.exe:
-  ID: 9 | 2025-09-26 11:25 - 2025-09-26 11:26 | Duration: 21 seconds
-  ID: 7 | 2025-09-24 13:49 - 2025-09-24 13:50 | Duration: 39 seconds
-  ID: 4 | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
-  ID: 3 | 2025-09-22 13:08 - 2025-09-23 08:48 | Duration: 19h 39m
 ```
 
 ## Current Limitations

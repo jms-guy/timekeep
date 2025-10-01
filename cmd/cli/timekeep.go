@@ -10,7 +10,7 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "add",
 		Aliases: []string{"Add", "ADD"},
-		Short:   "Add a program name to begin tracking",
+		Short:   "Add a program to begin tracking",
 		Long:    "User may specify any number of programs to track in a single command, as long as they're separated by a space",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -71,7 +71,7 @@ func (s *CLIService) sessionHistoryCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "history",
 		Aliases: []string{"History", "HISTORY"},
-		Short:   "Shows session history for a given program name",
+		Short:   "Shows session history for a given program",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.GetSessionHistory(args)
