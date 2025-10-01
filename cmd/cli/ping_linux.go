@@ -21,7 +21,7 @@ func (s *CLIService) PingService() error {
 		return fmt.Errorf("service is not active; Status: %s", status)
 	}
 
-	fmt.Printf("Service Status: %s", status)
+	fmt.Printf("Service Status: %s\n", status)
 
 	return nil
 }

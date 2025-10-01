@@ -24,10 +24,15 @@ sudo install -m 755 "$BINARY_DIR/timekeep" /usr/local/bin/
 
 mkdir -p ~/.local/share/timekeep
 
-
 sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
 
-CURRENT_USER=$(whoami)
+USER_NAME=$(whoami)
+GROUP_NAME=$(id -gn)
+
+sudo mkdir -p /var/run/timekeep
+sudo chown "$USER_NAME":"$GROUP_NAME" /var/run/timekeep
+sudo chmod 755 /var/run/timekeep
+
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
 Description=TimeKeep Process Tracker
@@ -37,8 +42,8 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
 Restart=always
-User=$CURRENT_USER
-Group=$CURRENT_USER
+User=$USER_NAME
+Group=$GROUP_NAME
 
 [Install]
 WantedBy=multi-user.target

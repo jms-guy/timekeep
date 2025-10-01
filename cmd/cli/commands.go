@@ -214,7 +214,7 @@ func (s *CLIService) ResetStats(args []string, all bool) error {
 			}
 		}
 
-		fmt.Printf("Session records for %d programs reset", len(args))
+		fmt.Printf("Session records for %d programs reset\n", len(args))
 	}
 
 	err := s.ServiceCmd.WriteToService()
