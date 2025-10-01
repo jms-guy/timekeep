@@ -80,6 +80,21 @@ GOOS=linux go build -o timekeep ./cmd/cli
 sudo install -m 755 timekeepd /usr/local/bin/
 sudo install -m 755 timekeep /usr/local/bin/
 
+# Database directory
+mkdir -p ~/.local/share/timekeep
+
+# Set service capabilities 
+sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
+
+# Set user/group variables
+USER_NAME=$(whoami)
+GROUP_NAME=$(id -gn)
+
+# Create socket directory and set permissions
+sudo mkdir -p /var/run/timekeep
+sudo chown "$USER_NAME":"$GROUP_NAME" /var/run/timekeep
+sudo chmod 755 /var/run/timekeep
+
 # Create systemd service
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
@@ -90,7 +105,8 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
 Restart=always
-User=root
+User=$USER_NAME
+Group=$GROUP_NAME
 
 [Install]
 WantedBy=multi-user.target
@@ -157,6 +173,7 @@ Session history for notepad.exe:
 - Linux - Configurable polling interval?
 - Windows - Check for running processes on service start
 - CLI - commands 
+  - sorting for session history
   - show active sessions
   - enhance ping for more service info
 
@@ -166,4 +183,4 @@ To contribute, clone the repo with ```git clone https://github.com/jms-guy/timek
 If you have an issue, please report it [here](https://github.com/jms-guy/timekeep/issues).
 
 ## License
-Licensed under MIT - see LICENSE.
+Licensed under MIT - see [LICENSE(https://github.com/jms-guy/timekeep/blob/main/LICENSE)].
