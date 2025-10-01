@@ -183,4 +183,4 @@ To contribute, clone the repo with ```git clone https://github.com/jms-guy/timek
 If you have an issue, please report it [here](https://github.com/jms-guy/timekeep/issues).
 
 ## License
-Licensed under MIT - see [LICENSE(https://github.com/jms-guy/timekeep/blob/main/LICENSE)].
+Licensed under MIT - see [LICENSE](https://github.com/jms-guy/timekeep/blob/main/LICENSE).
