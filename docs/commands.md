@@ -8,6 +8,7 @@
     - `timekeep rm notepad.exe`, `timekeep rm --all`
 - `ls`
     - Lists programs being tracked by service
+    - `timekeep ls`
 - `stats`
     - Shows stats for currently tracked programs. Accepts program name as argument to show in-depth stats for that program, else shows basic stats for all programs
     - `timekeep stats`, `timekeep stats notepad.exe`

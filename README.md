@@ -33,7 +33,7 @@ A process activity tracker, it runs as a background service recording start/stop
 
 ## Usage
 
-[Commands](https://github.com/jms-guy/timekeep/blob/main/docs/commands.md)
+**Full command reference:** [Commands](https://github.com/jms-guy/timekeep/blob/main/docs/commands.md)
 
 ```powershell
 timekeep add notepad.exe  # Add notepad
