@@ -42,7 +42,7 @@ A process activity tracker, it runs as a background service recording start/stop
 1. Download latest release ZIP from [Releases](https://github.com/jms-guy/timekeep/releases)
 2. Extract ZIP
 3. Run the appropriate install script:
-  - **Windows**: Double click 'install.bat'
+  - **Windows**: Double-click 'install.bat'
   - **Linux**: ```chmod +x install.sh && sudo ./install.sh```
 
 ### Method 2: Build from Source

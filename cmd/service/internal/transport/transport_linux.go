@@ -16,7 +16,7 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 	socketDir := "/var/run/timekeep"
 	socketName := socketDir + "/timekeep.sock"
 
-	if err := os.MkdirAll(socketDir, 0755); err != nil {
+	if err := os.MkdirAll(socketDir, 0o755); err != nil {
 		logger.Printf("ERROR: Failed to create socket directory: %v", err)
 		return
 	}
@@ -29,7 +29,7 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 		return
 	}
 
-	if err := os.Chmod(socketName, 0666); err != nil {
+	if err := os.Chmod(socketName, 0o666); err != nil {
 		logger.Printf("WARNING: Could not set socket permissions: %v", err)
 	}
 
