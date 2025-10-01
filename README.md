@@ -29,7 +29,7 @@ A process activity tracker, it runs as a background service recording start/stop
 ## How It Works
 - Windows: embeds a PowerShell script to subscribe to WMI process start/stop events.
 - Linux: polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
-- Session model: first PID for a program starts a session; additional PIDs join it; last PID exit ends the session.
+- Session model: A session begins when the first process for a tracked program starts. Additional processes (ex. multiple windows) are added to the active session. The session ends only when the last process terminates, giving an accurate picture of total time with that program.
 
 ## Usage
 
