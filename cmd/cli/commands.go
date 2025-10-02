@@ -225,19 +225,6 @@ func (s *CLIService) ResetStats(args []string, all bool) error {
 	return nil
 }
 
-// Formats a time.Duration value to display hours, minutes or seconds
-func (s *CLIService) formatDuration(prefix string, duration time.Duration) {
-	if duration < time.Minute {
-		fmt.Printf("%s%d seconds\n", prefix, int(duration.Seconds()))
-	} else if duration < time.Hour {
-		fmt.Printf("%s%d minutes\n", prefix, int(duration.Minutes()))
-	} else {
-		hours := int(duration.Hours())
-		minutes := int(duration.Minutes()) % 60
-		fmt.Printf("%s%dh %dm\n", prefix, hours, minutes)
-	}
-}
-
 // Removes active session and session records for all programs
 func (s *CLIService) ResetAllDatabase() error {
 	err := s.AsRepo.RemoveAllSessions(context.Background())
@@ -274,4 +261,39 @@ func (s *CLIService) ResetDatabaseForProgram(program string) error {
 	}
 
 	return nil
+}
+
+// Prints a list of currently active sessions being tracked by service
+func (s *CLIService) GetActiveSessions() error {
+	activeSessions, err := s.AsRepo.GetAllActiveSessions(context.Background())
+	if err != nil {
+		return fmt.Errorf("error getting active sessions: %w", err)
+	}
+	if len(activeSessions) == 0 {
+		fmt.Println("No active sessions.")
+		return nil
+	}
+
+	fmt.Println("Active sessions: ")
+	for _, session := range activeSessions {
+		duration := time.Since(session.StartTime)
+		sessionDetails := fmt.Sprintf(" • %s - ", session.ProgramName)
+
+		s.formatDuration(sessionDetails, duration)
+	}
+
+	return nil
+}
+
+// Formats a time.Duration value to display hours, minutes or seconds
+func (s *CLIService) formatDuration(prefix string, duration time.Duration) {
+	if duration < time.Minute {
+		fmt.Printf("%s%d seconds\n", prefix, int(duration.Seconds()))
+	} else if duration < time.Hour {
+		fmt.Printf("%s%d minutes\n", prefix, int(duration.Minutes()))
+	} else {
+		hours := int(duration.Hours())
+		minutes := int(duration.Minutes()) % 60
+		fmt.Printf("%s%dh %dm\n", prefix, hours, minutes)
+	}
 }

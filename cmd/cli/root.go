@@ -24,6 +24,7 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.refreshCmd())
 	rootCmd.AddCommand(s.resetStatsCmd())
 	rootCmd.AddCommand(s.pingServiceCmd())
+	rootCmd.AddCommand(s.getActiveSessionsCmd())
 
 	return rootCmd
 }

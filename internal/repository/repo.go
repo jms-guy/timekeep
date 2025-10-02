@@ -24,6 +24,7 @@ type ProgramRepository interface {
 type ActiveRepository interface {
 	CreateActiveSession(ctx context.Context, arg database.CreateActiveSessionParams) error
 	GetActiveSession(ctx context.Context, programName string) (time.Time, error)
+	GetAllActiveSessions(ctx context.Context) ([]database.ActiveSession, error)
 	RemoveActiveSession(ctx context.Context, programName string) error
 	RemoveAllSessions(ctx context.Context) error
 }
@@ -93,6 +94,11 @@ func (s *sqliteStore) CreateActiveSession(ctx context.Context, arg database.Crea
 
 func (s *sqliteStore) GetActiveSession(ctx context.Context, programName string) (time.Time, error) {
 	result, err := s.db.GetActiveSession(ctx, programName)
+	return result, err
+}
+
+func (s *sqliteStore) GetAllActiveSessions(ctx context.Context) ([]database.ActiveSession, error) {
+	result, err := s.db.GetAllActiveSessions(ctx)
 	return result, err
 }
 
