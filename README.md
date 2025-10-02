@@ -176,7 +176,7 @@ sudo systemctl daemon-reload
 - Windows - Check for running processes on service start
 - CLI - commands 
   - sorting for session history
-  - show active sessions
+  - show active sessions (✓)
   - enhance ping for more service info
 
 ## Contributing & Issues

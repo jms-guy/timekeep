@@ -3,24 +3,35 @@
 - `add`
     - Add a program to begin tracking. Add name of program's executable file name. May specify any number of programs to track in a single command, seperated by spaces in between
     - `timekeep add notepad.exe`, `timekeep add notepad.exe code.exe chrome.exe`
+
 - `rm`
     - Remove a program from tracking list. May specify any number of programs to remove in a single command, seperated by spaces in between. Takes `--all` flag to clear program list completely
     - `timekeep rm notepad.exe`, `timekeep rm --all`
+    
 - `ls`
     - Lists programs being tracked by service
     - `timekeep ls`
+
 - `stats`
     - Shows stats for currently tracked programs. Accepts program name as argument to show in-depth stats for that program, else shows basic stats for all programs
     - `timekeep stats`, `timekeep stats notepad.exe`
+
+- `active`
+    - Display list of current active sessions being tracked by service
+    - `timekeep active`
+
 - `history`
     - Shows session history for a given program
     - `timekeep history notepad.exe`
+
 - `refresh`
     - Sends a manual refresh command to the service
     - `timekeep refresh`
+
 - `reset`
     - Reset tracking stats for given programs. Accepts multiple arguments seperated by space. Takes `--all` flag to reset all stats
     - `timekeep reset notepad.exe`, `timekeep reset --all`
+
 - `ping`
     - Gets current state of Timekeep service
     - `timekeep ping`

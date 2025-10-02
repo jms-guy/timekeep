@@ -6,6 +6,9 @@ VALUES (?, ?);
 SELECT start_time FROM active_sessions
 WHERE program_name = ?;
 
+-- name: GetAllActiveSessions :many
+SELECT * FROM active_sessions;
+
 -- name: RemoveActiveSession :exec
 DELETE FROM active_sessions
 WHERE program_name = ?;

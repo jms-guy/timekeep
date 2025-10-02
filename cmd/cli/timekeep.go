@@ -126,3 +126,15 @@ func (s *CLIService) pingServiceCmd() *cobra.Command {
 		},
 	}
 }
+
+func (s *CLIService) getActiveSessionsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "active",
+		Aliases: []string{"Active", "ACTIVE"},
+		Short:   "Get list of current active sessions being tracked",
+		Args:    cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.GetActiveSessions()
+		},
+	}
+}

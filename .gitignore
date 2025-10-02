@@ -31,4 +31,4 @@ go.work.sum
 # .idea/
 # .vscode/
 
-timekeep.db
+testbuild.sh

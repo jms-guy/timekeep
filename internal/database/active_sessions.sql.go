@@ -37,6 +37,33 @@ func (q *Queries) GetActiveSession(ctx context.Context, programName string) (tim
 	return start_time, err
 }
 
+const getAllActiveSessions = `-- name: GetAllActiveSessions :many
+SELECT id, program_name, start_time FROM active_sessions
+`
+
+func (q *Queries) GetAllActiveSessions(ctx context.Context) ([]ActiveSession, error) {
+	rows, err := q.db.QueryContext(ctx, getAllActiveSessions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ActiveSession
+	for rows.Next() {
+		var i ActiveSession
+		if err := rows.Scan(&i.ID, &i.ProgramName, &i.StartTime); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeActiveSession = `-- name: RemoveActiveSession :exec
 DELETE FROM active_sessions
 WHERE program_name = ?
