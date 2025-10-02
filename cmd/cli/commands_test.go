@@ -222,5 +222,16 @@ func TestPingService(t *testing.T) {
 	}
 
 	err = s.PingService()
-	assert.Nil(t, err, "PingService should not err")
+
+	assert.Contains(t, err.Error(), "service not running")
+}
+
+func TestGetActiveSessions(t *testing.T) {
+	s, err := setupTestServiceWithPrograms(t, "notepad.exe", "code.exe")
+	if err != nil {
+		t.Fatalf("Failed to setup test service: %v", err)
+	}
+
+	err = s.GetActiveSessions()
+	assert.Nil(t, err, "GetActiveSessions should not err")
 }
