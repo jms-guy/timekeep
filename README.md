@@ -175,7 +175,7 @@ sudo systemctl daemon-reload
 - Linux - Configurable polling interval?
 - Windows - Check for running processes on service start
 - CLI - commands 
-  - sorting for session history
+  - sorting for session history (✓)
   - show active sessions (✓)
   - enhance ping for more service info
 
