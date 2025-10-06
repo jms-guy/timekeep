@@ -12,17 +12,24 @@
     - Lists programs being tracked by service
     - `timekeep ls`
 
-- `stats`
-    - Shows stats for currently tracked programs. Accepts program name as argument to show in-depth stats for that program, else shows basic stats for all programs
-    - `timekeep stats`, `timekeep stats notepad.exe`
+- `info`
+    - Shows basic info for currently tracked programs. Accepts program name as argument to show in-depth stats for that program, else shows basic stats for all programs
+    - `timekeep info`, `timekeep info notepad.exe`
 
 - `active`
     - Display list of current active sessions being tracked by service
     - `timekeep active`
 
 - `history`
-    - Shows session history for a given program
-    - `timekeep history notepad.exe`
+    - Shows session history, may take program name as argument to filter sessions shown
+    - `timekeep history`, `timekeep history notepad.exe`
+    - Flags available for further filtering:
+        - ex. `timekeep history --date 2025-09-30 --limit 10`
+        - `date` (2006-01-02) - Show sessions open on given date
+        - `start` (2006-01-02) - Show sessions open on or after given date
+        - `end` (2006-01-02) - If flag is given alongside `start`, will filter sessions open up-to given date
+        - `limit` (25) - Will specify number of sessions to show at one time. Default 25 
+    
 
 - `refresh`
     - Sends a manual refresh command to the service
@@ -32,6 +39,9 @@
     - Reset tracking stats for given programs. Accepts multiple arguments seperated by space. Takes `--all` flag to reset all stats
     - `timekeep reset notepad.exe`, `timekeep reset --all`
 
-- `ping`
+- `status`
     - Gets current state of Timekeep service
     - `timekeep ping`
+
+- `version`
+    - Returns version of Timekeep user is running

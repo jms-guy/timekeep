@@ -79,7 +79,8 @@ func (s *CLIService) sessionHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "history",
 		Aliases: []string{"History", "HISTORY"},
-		Short:   "Shows session history for a given program",
+		Short:   "Shows session history",
+		Long:    "If no args given, shows previous 25 sessions. Program name may be given as argument to filter only those sessions. Flags may be given to filter further, with OR without program name",
 		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
