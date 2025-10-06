@@ -2,6 +2,6 @@
 
 package main
 
-func (s *CLIService) PingService() error {
+func (s *CLIService) StatusService() error {
 	return nil
 }

@@ -32,14 +32,107 @@ func (q *Queries) AddToSessionHistory(ctx context.Context, arg AddToSessionHisto
 	return err
 }
 
-const getAllSessionsForProgram = `-- name: GetAllSessionsForProgram :many
-SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
-WHERE session_history.program_name = ?
-ORDER BY start_time DESC
+const getAllSessionHistory = `-- name: GetAllSessionHistory :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    ORDER BY end_time DESC
+    LIMIT ?
+) AS results
+ORDER BY end_time ASC
 `
 
-func (q *Queries) GetAllSessionsForProgram(ctx context.Context, programName string) ([]SessionHistory, error) {
-	rows, err := q.db.QueryContext(ctx, getAllSessionsForProgram, programName)
+func (q *Queries) GetAllSessionHistory(ctx context.Context, limit int64) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSessionHistory, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SessionHistory
+	for rows.Next() {
+		var i SessionHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProgramName,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllSessionHistoryByDate = `-- name: GetAllSessionHistoryByDate :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    WHERE start_time <= ? AND end_time >= ?
+    ORDER BY start_time DESC
+    LIMIT ?
+) AS results
+ORDER BY start_time ASC
+`
+
+type GetAllSessionHistoryByDateParams struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Limit     int64
+}
+
+func (q *Queries) GetAllSessionHistoryByDate(ctx context.Context, arg GetAllSessionHistoryByDateParams) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSessionHistoryByDate, arg.StartTime, arg.EndTime, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SessionHistory
+	for rows.Next() {
+		var i SessionHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProgramName,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllSessionHistoryByRange = `-- name: GetAllSessionHistoryByRange :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    WHERE start_time <= ? AND end_time >= ?
+    ORDER BY start_time DESC
+    LIMIT ?
+) AS results
+ORDER BY start_time ASC
+`
+
+type GetAllSessionHistoryByRangeParams struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Limit     int64
+}
+
+func (q *Queries) GetAllSessionHistoryByRange(ctx context.Context, arg GetAllSessionHistoryByRangeParams) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getAllSessionHistoryByRange, arg.StartTime, arg.EndTime, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +190,154 @@ func (q *Queries) GetLastSessionForProgram(ctx context.Context, programName stri
 		&i.DurationSeconds,
 	)
 	return i, err
+}
+
+const getSessionHistory = `-- name: GetSessionHistory :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    WHERE program_name = ?
+    ORDER BY end_time DESC
+    LIMIT ?
+) AS results
+ORDER BY end_time ASC
+`
+
+type GetSessionHistoryParams struct {
+	ProgramName string
+	Limit       int64
+}
+
+func (q *Queries) GetSessionHistory(ctx context.Context, arg GetSessionHistoryParams) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getSessionHistory, arg.ProgramName, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SessionHistory
+	for rows.Next() {
+		var i SessionHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProgramName,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSessionHistoryByDate = `-- name: GetSessionHistoryByDate :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    WHERE program_name = ? 
+      AND start_time <= ? AND end_time >= ?
+    ORDER BY start_time DESC
+    LIMIT ?
+) AS results
+ORDER BY start_time ASC
+`
+
+type GetSessionHistoryByDateParams struct {
+	ProgramName string
+	StartTime   time.Time
+	EndTime     time.Time
+	Limit       int64
+}
+
+func (q *Queries) GetSessionHistoryByDate(ctx context.Context, arg GetSessionHistoryByDateParams) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getSessionHistoryByDate,
+		arg.ProgramName,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SessionHistory
+	for rows.Next() {
+		var i SessionHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProgramName,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSessionHistoryByRange = `-- name: GetSessionHistoryByRange :many
+SELECT id, program_name, start_time, end_time, duration_seconds FROM (
+    SELECT id, program_name, start_time, end_time, duration_seconds FROM session_history
+    WHERE program_name = ?
+      AND start_time <= ? AND end_time >= ?
+    ORDER BY start_time DESC
+    LIMIT ?
+) AS results
+ORDER BY start_time ASC
+`
+
+type GetSessionHistoryByRangeParams struct {
+	ProgramName string
+	StartTime   time.Time
+	EndTime     time.Time
+	Limit       int64
+}
+
+func (q *Queries) GetSessionHistoryByRange(ctx context.Context, arg GetSessionHistoryByRangeParams) ([]SessionHistory, error) {
+	rows, err := q.db.QueryContext(ctx, getSessionHistoryByRange,
+		arg.ProgramName,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SessionHistory
+	for rows.Next() {
+		var i SessionHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProgramName,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DurationSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const removeAllRecords = `-- name: RemoveAllRecords :exec

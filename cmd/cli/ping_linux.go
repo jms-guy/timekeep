@@ -9,7 +9,7 @@ import (
 )
 
 // Gets current service state for user
-func (s *CLIService) PingService() error {
+func (s *CLIService) StatusService() error {
 	cmd := exec.Command("systemctl", "is-active", "timekeep.service")
 	output, err := cmd.Output()
 	if err != nil {

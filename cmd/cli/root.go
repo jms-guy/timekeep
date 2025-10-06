@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	_ "modernc.org/sqlite"
@@ -19,12 +22,13 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.addProgramsCmd())
 	rootCmd.AddCommand(s.removeProgramsCmd())
 	rootCmd.AddCommand(s.getListcmd())
-	rootCmd.AddCommand(s.statsCmd())
+	rootCmd.AddCommand(s.infoCmd())
 	rootCmd.AddCommand(s.sessionHistoryCmd())
 	rootCmd.AddCommand(s.refreshCmd())
 	rootCmd.AddCommand(s.resetStatsCmd())
-	rootCmd.AddCommand(s.pingServiceCmd())
+	rootCmd.AddCommand(s.statusServiceCmd())
 	rootCmd.AddCommand(s.getActiveSessionsCmd())
+	rootCmd.AddCommand(s.getVersionCmd())
 
 	return rootCmd
 }
@@ -35,7 +39,11 @@ func Execute() {
 		fmt.Printf("Failed to initialize CLI service: %v\n", err)
 		os.Exit(1)
 	}
-	if err := cliService.RootCmd().Execute(); err != nil {
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	if err := cliService.RootCmd().ExecuteContext(ctx); err != nil {
 		fmt.Printf("Command execution failed: %v\n", err)
 		os.Exit(1)
 	}

@@ -48,10 +48,10 @@ Statistics for notepad.exe:
  • Average session length: 4h 55m
 timekeep history notepad.exe  # Session history for program
 Session history for notepad.exe:
-  ID: 9 | 2025-09-26 11:25 - 2025-09-26 11:26 | Duration: 21 seconds
-  ID: 7 | 2025-09-24 13:49 - 2025-09-24 13:50 | Duration: 39 seconds
-  ID: 4 | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
-  ID: 3 | 2025-09-22 13:08 - 2025-09-23 08:48 | Duration: 19h 39m
+  notepad.exe | 2025-09-26 11:25 - 2025-09-26 11:26 | Duration: 21 seconds
+  notepad.exe | 2025-09-24 13:49 - 2025-09-24 13:50 | Duration: 39 seconds
+  notepad.exe | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
+  notepad.exe | 2025-09-22 13:08 - 2025-09-23 08:48 | Duration: 19h 39m
 ```
 
 ## Installation

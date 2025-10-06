@@ -11,7 +11,10 @@ type CLIService struct {
 	HsRepo     repository.HistoryRepository
 	ServiceCmd ServiceCommander
 	CmdExe     CommandExecutor
+	Version    string
 }
+
+var currentVersion = "v1.0.0"
 
 // Creates new CLI service instance
 func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, sc ServiceCommander, cmdE CommandExecutor) *CLIService {
@@ -21,6 +24,7 @@ func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepos
 		HsRepo:     hr,
 		ServiceCmd: sc,
 		CmdExe:     cmdE,
+		Version:    currentVersion,
 	}
 }
 

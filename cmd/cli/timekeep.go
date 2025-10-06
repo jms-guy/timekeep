@@ -14,7 +14,9 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 		Long:    "User may specify any number of programs to track in a single command, as long as they're separated by a space",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.AddPrograms(args)
+			ctx := cmd.Context()
+
+			return s.AddPrograms(ctx, args)
 		},
 	}
 }
@@ -27,9 +29,11 @@ func (s *CLIService) removeProgramsCmd() *cobra.Command {
 		Long:    "User may specify multiple programs to remove, as long as they're separated by a space. May provide the --all flag to remove all programs from tracking list",
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			all, _ := cmd.Flags().GetBool("all")
 
-			return s.RemovePrograms(args, all)
+			return s.RemovePrograms(ctx, args, all)
 		},
 	}
 
@@ -45,38 +49,56 @@ func (s *CLIService) getListcmd() *cobra.Command {
 		Short:   "Lists programs being tracked by service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.GetList()
+			ctx := cmd.Context()
+
+			return s.GetList(ctx)
 		},
 	}
 }
 
-func (s *CLIService) statsCmd() *cobra.Command {
+func (s *CLIService) infoCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "stats",
-		Aliases: []string{"Stats", "STATS"},
-		Short:   "Shows stats for currently tracked programs",
+		Use:     "info",
+		Aliases: []string{"Info", "INFO"},
+		Short:   "Shows basic info for currently tracked programs",
 		Long:    "Accepts program name as an argument to show in depth stats for that program, else shows basic stats for all programs",
 		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			if len(args) == 0 {
-				return s.GetAllStats()
+				return s.GetAllInfo(ctx)
 			} else {
-				return s.GetStats(args)
+				return s.GetInfo(ctx, args)
 			}
 		},
 	}
 }
 
 func (s *CLIService) sessionHistoryCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "history",
 		Aliases: []string{"History", "HISTORY"},
 		Short:   "Shows session history for a given program",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.GetSessionHistory(args)
+			ctx := cmd.Context()
+
+			date, _ := cmd.Flags().GetString("date")
+			start, _ := cmd.Flags().GetString("start")
+			end, _ := cmd.Flags().GetString("end")
+			limit, _ := cmd.Flags().GetInt64("limit")
+
+			return s.GetSessionHistory(ctx, args, date, start, end, limit)
 		},
 	}
+
+	cmd.Flags().String("date", "", "Filter session history by date")
+	cmd.Flags().String("start", "", "Filters session history by adding a starting date")
+	cmd.Flags().String("end", "", "Filters session history by adding an ending date")
+	cmd.Flags().Int64("limit", 25, "Adjusts number limit of sessions shown")
+
+	return cmd
 }
 
 func (s *CLIService) refreshCmd() *cobra.Command {
@@ -104,9 +126,11 @@ func (s *CLIService) resetStatsCmd() *cobra.Command {
 		Long:    "Reset tracking stats for given programs, accepts multiple programs with a space between them. May provide the --all flag to reset all stats",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			all, _ := cmd.Flags().GetBool("all")
 
-			return s.ResetStats(args, all)
+			return s.ResetStats(ctx, args, all)
 		},
 	}
 
@@ -115,14 +139,14 @@ func (s *CLIService) resetStatsCmd() *cobra.Command {
 	return cmd
 }
 
-func (s *CLIService) pingServiceCmd() *cobra.Command {
+func (s *CLIService) statusServiceCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "ping",
-		Aliases: []string{"Query", "QUERY"},
+		Use:     "status",
+		Aliases: []string{"Status", "STATUS"},
 		Short:   "Gets current OS state of Timekeep service",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.PingService()
+			return s.StatusService()
 		},
 	}
 }
@@ -134,7 +158,21 @@ func (s *CLIService) getActiveSessionsCmd() *cobra.Command {
 		Short:   "Get list of current active sessions being tracked",
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.GetActiveSessions()
+			ctx := cmd.Context()
+
+			return s.GetActiveSessions(ctx)
+		},
+	}
+}
+
+func (s *CLIService) getVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "version",
+		Aliases: []string{"Version", "VERSION"},
+		Short:   "Get current version of Timekeep",
+		Args:    cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.GetVersion()
 		},
 	}
 }

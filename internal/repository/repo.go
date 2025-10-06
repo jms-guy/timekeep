@@ -31,11 +31,16 @@ type ActiveRepository interface {
 
 type HistoryRepository interface {
 	AddToSessionHistory(ctx context.Context, arg database.AddToSessionHistoryParams) error
-	GetAllSessionsForProgram(ctx context.Context, programName string) ([]database.SessionHistory, error)
 	GetCountOfSessionsForProgram(ctx context.Context, programName string) (int64, error)
 	GetLastSessionForProgram(ctx context.Context, programName string) (database.SessionHistory, error)
 	RemoveAllRecords(ctx context.Context) error
 	RemoveRecordsForProgram(ctx context.Context, programName string) error
+	GetSessionHistory(ctx context.Context, arg database.GetSessionHistoryParams) ([]database.SessionHistory, error)
+	GetAllSessionHistory(ctx context.Context, limit int64) ([]database.SessionHistory, error)
+	GetSessionHistoryByDate(ctx context.Context, arg database.GetSessionHistoryByDateParams) ([]database.SessionHistory, error)
+	GetAllSessionHistoryByDate(ctx context.Context, arg database.GetAllSessionHistoryByDateParams) ([]database.SessionHistory, error)
+	GetSessionHistoryByRange(ctx context.Context, arg database.GetSessionHistoryByRangeParams) ([]database.SessionHistory, error)
+	GetAllSessionHistoryByRange(ctx context.Context, arg database.GetAllSessionHistoryByRangeParams) ([]database.SessionHistory, error)
 }
 
 type sqliteStore struct {
@@ -116,11 +121,6 @@ func (s *sqliteStore) AddToSessionHistory(ctx context.Context, arg database.AddT
 	return s.db.AddToSessionHistory(ctx, arg)
 }
 
-func (s *sqliteStore) GetAllSessionsForProgram(ctx context.Context, programName string) ([]database.SessionHistory, error) {
-	results, err := s.db.GetAllSessionsForProgram(ctx, programName)
-	return results, err
-}
-
 func (s *sqliteStore) GetCountOfSessionsForProgram(ctx context.Context, programName string) (int64, error) {
 	result, err := s.db.GetCountOfSessionsForProgram(ctx, programName)
 	return result, err
@@ -137,4 +137,34 @@ func (s *sqliteStore) RemoveAllRecords(ctx context.Context) error {
 
 func (s *sqliteStore) RemoveRecordsForProgram(ctx context.Context, programName string) error {
 	return s.db.RemoveRecordsForProgram(ctx, programName)
+}
+
+func (s *sqliteStore) GetSessionHistory(ctx context.Context, arg database.GetSessionHistoryParams) ([]database.SessionHistory, error) {
+	results, err := s.db.GetSessionHistory(ctx, arg)
+	return results, err
+}
+
+func (s *sqliteStore) GetAllSessionHistory(ctx context.Context, limit int64) ([]database.SessionHistory, error) {
+	results, err := s.db.GetAllSessionHistory(ctx, limit)
+	return results, err
+}
+
+func (s *sqliteStore) GetSessionHistoryByDate(ctx context.Context, arg database.GetSessionHistoryByDateParams) ([]database.SessionHistory, error) {
+	results, err := s.db.GetSessionHistoryByDate(ctx, arg)
+	return results, err
+}
+
+func (s *sqliteStore) GetAllSessionHistoryByDate(ctx context.Context, arg database.GetAllSessionHistoryByDateParams) ([]database.SessionHistory, error) {
+	results, err := s.db.GetAllSessionHistoryByDate(ctx, arg)
+	return results, err
+}
+
+func (s *sqliteStore) GetSessionHistoryByRange(ctx context.Context, arg database.GetSessionHistoryByRangeParams) ([]database.SessionHistory, error) {
+	results, err := s.db.GetSessionHistoryByRange(ctx, arg)
+	return results, err
+}
+
+func (s *sqliteStore) GetAllSessionHistoryByRange(ctx context.Context, arg database.GetAllSessionHistoryByRangeParams) ([]database.SessionHistory, error) {
+	results, err := s.db.GetAllSessionHistoryByRange(ctx, arg)
+	return results, err
 }

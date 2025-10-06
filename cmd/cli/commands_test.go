@@ -48,10 +48,10 @@ func TestAddPrograms(t *testing.T) {
 	}
 
 	programsToAdd := []string{"notepad.exe", "code.exe"}
-	err = s.AddPrograms(programsToAdd)
+	err = s.AddPrograms(t.Context(), programsToAdd)
 	assert.Nil(t, err, "AddPrograms should not return error")
 
-	addedPrograms, err := s.PrRepo.GetAllProgramNames(context.Background())
+	addedPrograms, err := s.PrRepo.GetAllProgramNames(t.Context())
 	assert.Nil(t, err, "GetAllProgramNames should not return error")
 
 	assert.ElementsMatch(t, programsToAdd, addedPrograms, "The repository should contain the added programs")
@@ -87,10 +87,10 @@ func TestRemoveProgram(t *testing.T) {
 			}
 
 			programToRemove := []string{"notepad.exe"}
-			err = s.RemovePrograms(programToRemove, tt.all)
+			err = s.RemovePrograms(t.Context(), programToRemove, tt.all)
 			assert.Nil(t, err, "RemovePrograms should not return err")
 
-			remainingPrograms, _ := s.PrRepo.GetAllProgramNames(context.Background())
+			remainingPrograms, _ := s.PrRepo.GetAllProgramNames(t.Context())
 			assert.ElementsMatch(t, tt.expected, remainingPrograms, tt.expectedMsg)
 		})
 	}
@@ -102,7 +102,7 @@ func TestGetList(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetList()
+	err = s.GetList(t.Context())
 	assert.Nil(t, err, "GetList should not return err")
 }
 
@@ -112,7 +112,7 @@ func TestGetList_Empty(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetList()
+	err = s.GetList(t.Context())
 	assert.Nil(t, err, "GetList should not return err")
 }
 
@@ -122,7 +122,7 @@ func TestGetAllStats(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetAllStats()
+	err = s.GetAllInfo(t.Context())
 	assert.Nil(t, err, "GetAllStats should not err")
 }
 
@@ -132,7 +132,7 @@ func TestGetAllStats_Empty(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetAllStats()
+	err = s.GetAllInfo(t.Context())
 	assert.Nil(t, err, "GetAllStats should not err")
 }
 
@@ -142,7 +142,7 @@ func TestGetStats(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetStats([]string{"notepad.exe"})
+	err = s.GetInfo(t.Context(), []string{"notepad.exe"})
 	assert.Nil(t, err, "GetStats should not err")
 }
 
@@ -152,7 +152,7 @@ func TestGetSessionHistory(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetSessionHistory([]string{"code.exe"})
+	err = s.GetSessionHistory(t.Context(), []string{"code.exe"}, "", "", "", 25)
 	assert.Nil(t, err, "GetSessionHistory should not err")
 }
 
@@ -162,7 +162,7 @@ func TestResetStats(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.ResetStats([]string{"code.exe"}, false)
+	err = s.ResetStats(t.Context(), []string{"code.exe"}, false)
 	assert.Nil(t, err, "ResetStats should not err")
 }
 
@@ -172,7 +172,7 @@ func TestResetStats_NoArgs(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.ResetStats([]string{}, false)
+	err = s.ResetStats(t.Context(), []string{}, false)
 	assert.Nil(t, err, "ResetStats should not err")
 }
 
@@ -182,7 +182,7 @@ func TestResetStats_All(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.ResetStats([]string{}, true)
+	err = s.ResetStats(t.Context(), []string{}, true)
 	assert.Nil(t, err, "ResetStats should not err")
 }
 
@@ -192,13 +192,13 @@ func TestResetAllDatabase(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.ResetAllDatabase()
+	err = s.ResetAllDatabase(t.Context())
 	assert.Nil(t, err, "ResetAllDatabase should not err")
 
-	remainingPrograms, _ := s.PrRepo.GetAllProgramNames(context.Background())
+	remainingPrograms, _ := s.PrRepo.GetAllProgramNames(t.Context())
 	assert.Len(t, remainingPrograms, 2, "after reset, programs should be unaffected")
 
-	allHistory, _ := s.HsRepo.GetAllSessionsForProgram(context.Background(), "notepad.exe")
+	allHistory, _ := s.HsRepo.GetSessionHistory(t.Context(), database.GetSessionHistoryParams{ProgramName: "notepad.exe", Limit: 25})
 	assert.Len(t, allHistory, 0, "after reset, there should be no session history")
 }
 
@@ -208,10 +208,10 @@ func TestResetDatabaseForProgram(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.ResetDatabaseForProgram("code.exe")
+	err = s.ResetDatabaseForProgram(t.Context(), "code.exe")
 	assert.Nil(t, err, "ResetDatabaseForProgram should not err")
 
-	history, _ := s.HsRepo.GetAllSessionsForProgram(context.Background(), "code.exe")
+	history, _ := s.HsRepo.GetSessionHistory(t.Context(), database.GetSessionHistoryParams{ProgramName: "code.exe", Limit: 25})
 	assert.Len(t, history, 0, "after reset, there should be no session history")
 }
 
@@ -221,7 +221,7 @@ func TestPingService(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.PingService()
+	err = s.StatusService()
 
 	assert.Contains(t, err.Error(), "service not running")
 }
@@ -232,6 +232,6 @@ func TestGetActiveSessions(t *testing.T) {
 		t.Fatalf("Failed to setup test service: %v", err)
 	}
 
-	err = s.GetActiveSessions()
+	err = s.GetActiveSessions(t.Context())
 	assert.Nil(t, err, "GetActiveSessions should not err")
 }

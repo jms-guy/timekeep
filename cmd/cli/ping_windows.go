@@ -33,7 +33,7 @@ var stateName = map[ServiceState]string{
 }
 
 // Gets current service state for user
-func (s *CLIService) PingService() error {
+func (s *CLIService) StatusService() error {
 	stdoutResult, err := s.CmdExe.RunCommand(context.Background(), "sc.exe", "query", "Timekeep")
 	if err != nil {
 		return err
