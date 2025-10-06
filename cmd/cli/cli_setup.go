@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/jms-guy/timekeep/internal/config"
 	"github.com/jms-guy/timekeep/internal/repository"
 	mysql "github.com/jms-guy/timekeep/sql"
 )
@@ -11,10 +12,8 @@ type CLIService struct {
 	HsRepo     repository.HistoryRepository
 	ServiceCmd ServiceCommander
 	CmdExe     CommandExecutor
-	Version    string
+	Config     *config.Config
 }
-
-var currentVersion = "v1.0.0"
 
 // Creates new CLI service instance
 func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepository, hr repository.HistoryRepository, sc ServiceCommander, cmdE CommandExecutor) *CLIService {
@@ -24,7 +23,6 @@ func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepos
 		HsRepo:     hr,
 		ServiceCmd: sc,
 		CmdExe:     cmdE,
-		Version:    currentVersion,
 	}
 }
 
@@ -37,6 +35,13 @@ func CLIServiceSetup() (*CLIService, error) {
 	store := repository.NewSqliteStore(db)
 
 	service := CreateCLIService(store, store, store, &realServiceCommander{}, &realCommandExecutor{})
+
+	config, err := config.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	service.Config = config
 
 	return service, nil
 }

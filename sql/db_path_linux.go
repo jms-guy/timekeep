@@ -3,7 +3,6 @@
 package sql
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -15,6 +14,6 @@ func getDatabasePath() (string, error) {
 		return "", err
 	}
 	dbPath := filepath.Join(home, ".local", "share", "timekeep", "timekeep.db")
-	log.Printf("SERVICE DEBUG: Database path: %s", dbPath)
+
 	return dbPath, nil
 }

@@ -296,6 +296,5 @@ func (s *CLIService) GetActiveSessions(ctx context.Context) error {
 
 // Basic function to print the current Timekeep version
 func (s *CLIService) GetVersion() error {
-	fmt.Println(s.Version)
 	return nil
 }
