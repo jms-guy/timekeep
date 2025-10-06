@@ -33,4 +33,4 @@ $env:Path = $env:Path + ";" + $InstallPath
 sc.exe create TimeKeep binPath= "$InstallPath\timekeep-service.exe" start= auto
 sc.exe start TimeKeep
 
-Write-Host "Installation complete! Run 'timekeep ping' to test."
+Write-Host "Installation complete! Run 'timekeep status' to test."

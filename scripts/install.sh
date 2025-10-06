@@ -53,4 +53,4 @@ sudo systemctl daemon-reload
 sudo systemctl enable timekeep.service
 sudo systemctl start timekeep.service
 
-echo "Installation complete. Run 'timekeep ping' to test."
+echo "Installation complete. Run 'timekeep status' to test."

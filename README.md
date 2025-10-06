@@ -40,7 +40,7 @@ timekeep add notepad.exe  # Add notepad
 timekeep ls               # List currently tracked programs
 Programs currently being tracked:
  • notepad.exe
-timekeep stats notepad.exe # Basic stats for program sessions
+timekeep info notepad.exe # Basic info for program sessions
 Statistics for notepad.exe:
  • Current Lifetime: 19h 41m
  • Total sessions to date: 4
@@ -88,7 +88,7 @@ Get-Service -Name "timekeep"
 
 Test using CLI:
 ```powershell
-.\timekeep.exe ping # Check if the service is responsive
+.\timekeep.exe status # Check if the service is responsive
 ```
 
 #### Linux
@@ -146,7 +146,7 @@ sudo systemctl status timekeep
 
 Test using CLI:
 ```bash
-timekeep ping # Check if the service is responsive
+timekeep status # Check if the service is responsive
 ```
 
 ## Uninstalling
