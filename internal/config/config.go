@@ -19,7 +19,8 @@ type WakaTimeConfig struct {
 
 const defaultConfig = `{
   "wakatime": {
-    "enabled": false
+    "enabled": false,
+	"api_key": ""
   }
 }`
 

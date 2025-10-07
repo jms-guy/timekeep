@@ -299,3 +299,69 @@ func (s *CLIService) GetVersion() error {
 	fmt.Println(s.Version)
 	return nil
 }
+
+// Changes config to enable WakaTime with API key
+func (s *CLIService) EnableWakaTime(apiKey string) error {
+	if s.Config.WakaTime.Enabled {
+		fmt.Println("WakaTime integration already enabled")
+		return nil
+	}
+
+	if apiKey != "" {
+		s.Config.WakaTime.APIKey = apiKey
+		s.Config.WakaTime.Enabled = true
+
+		err := s.Config.Save()
+		if err != nil {
+			return err
+		}
+		err = s.ServiceCmd.WriteToService()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("WakaTime integration enabled")
+		return nil
+	}
+
+	if s.Config.WakaTime.APIKey != "" {
+		s.Config.WakaTime.Enabled = true
+
+		err := s.Config.Save()
+		if err != nil {
+			return err
+		}
+		err = s.ServiceCmd.WriteToService()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("WakaTime integration enabled")
+		return nil
+	}
+
+	fmt.Println("User must provide a WakaTime API key")
+	return nil
+}
+
+// Disables WakaTime in config
+func (s *CLIService) DisableWakaTime() error {
+	if !s.Config.WakaTime.Enabled {
+		fmt.Println("WakaTime integration disabled")
+		return nil
+	}
+
+	s.Config.WakaTime.Enabled = false
+
+	err := s.Config.Save()
+	if err != nil {
+		return err
+	}
+	err = s.ServiceCmd.WriteToService()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("WakaTime integration disabled")
+	return nil
+}
