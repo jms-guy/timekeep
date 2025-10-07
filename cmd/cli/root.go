@@ -29,7 +29,6 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.statusServiceCmd())
 	rootCmd.AddCommand(s.getActiveSessionsCmd())
 	rootCmd.AddCommand(s.getVersionCmd())
-	rootCmd.AddCommand(s.updateCmd())
 
 	return rootCmd
 }

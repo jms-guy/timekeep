@@ -177,15 +177,3 @@ func (s *CLIService) getVersionCmd() *cobra.Command {
 		},
 	}
 }
-
-func (s *CLIService) updateCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "update",
-		Aliases: []string{"Update", "UPDATE"},
-		Short:   "Update to latest version of Timekeep",
-		Args:    cobra.ExactArgs(0),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.UpdateTimekeep()
-		},
-	}
-}

@@ -6,6 +6,8 @@ import (
 	mysql "github.com/jms-guy/timekeep/sql"
 )
 
+var Version = "dev"
+
 type CLIService struct {
 	PrRepo     repository.ProgramRepository
 	AsRepo     repository.ActiveRepository
@@ -13,6 +15,7 @@ type CLIService struct {
 	ServiceCmd ServiceCommander
 	CmdExe     CommandExecutor
 	Config     *config.Config
+	Version    string
 }
 
 // Creates new CLI service instance
@@ -23,6 +26,7 @@ func CreateCLIService(pr repository.ProgramRepository, ar repository.ActiveRepos
 		HsRepo:     hr,
 		ServiceCmd: sc,
 		CmdExe:     cmdE,
+		Version:    Version,
 	}
 }
 
