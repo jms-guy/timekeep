@@ -10,7 +10,7 @@ import (
 // Repository abstraction interfaces
 
 type ProgramRepository interface {
-	AddProgram(ctx context.Context, name string) error
+	AddProgram(ctx context.Context, arg database.AddProgramParams) error
 	GetAllProgramNames(ctx context.Context) ([]string, error)
 	GetAllPrograms(ctx context.Context) ([]database.TrackedProgram, error)
 	GetProgramByName(ctx context.Context, name string) (database.TrackedProgram, error)
@@ -52,8 +52,8 @@ func NewSqliteStore(queries *database.Queries) *sqliteStore {
 }
 
 // //////////////// Program Repository //////////////////
-func (s *sqliteStore) AddProgram(ctx context.Context, name string) error {
-	return s.db.AddProgram(ctx, name)
+func (s *sqliteStore) AddProgram(ctx context.Context, arg database.AddProgramParams) error {
+	return s.db.AddProgram(ctx, arg)
 }
 
 func (s *sqliteStore) GetAllProgramNames(ctx context.Context) ([]string, error) {

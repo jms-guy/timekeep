@@ -7,15 +7,21 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const addProgram = `-- name: AddProgram :exec
-INSERT OR IGNORE INTO tracked_programs (name)
-VALUES (?)
+INSERT OR IGNORE INTO tracked_programs (name, category)
+VALUES (?, ?)
 `
 
-func (q *Queries) AddProgram(ctx context.Context, name string) error {
-	_, err := q.db.ExecContext(ctx, addProgram, name)
+type AddProgramParams struct {
+	Name     string
+	Category sql.NullString
+}
+
+func (q *Queries) AddProgram(ctx context.Context, arg AddProgramParams) error {
+	_, err := q.db.ExecContext(ctx, addProgram, arg.Name, arg.Category)
 	return err
 }
 
@@ -47,7 +53,7 @@ func (q *Queries) GetAllProgramNames(ctx context.Context) ([]string, error) {
 }
 
 const getAllPrograms = `-- name: GetAllPrograms :many
-SELECT id, name, lifetime_seconds FROM tracked_programs
+SELECT id, name, category, lifetime_seconds FROM tracked_programs
 `
 
 func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) {
@@ -59,7 +65,12 @@ func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) 
 	var items []TrackedProgram
 	for rows.Next() {
 		var i TrackedProgram
-		if err := rows.Scan(&i.ID, &i.Name, &i.LifetimeSeconds); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Category,
+			&i.LifetimeSeconds,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -74,14 +85,19 @@ func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) 
 }
 
 const getProgramByName = `-- name: GetProgramByName :one
-SELECT id, name, lifetime_seconds FROM tracked_programs
+SELECT id, name, category, lifetime_seconds FROM tracked_programs
 WHERE name = ?
 `
 
 func (q *Queries) GetProgramByName(ctx context.Context, name string) (TrackedProgram, error) {
 	row := q.db.QueryRowContext(ctx, getProgramByName, name)
 	var i TrackedProgram
-	err := row.Scan(&i.ID, &i.Name, &i.LifetimeSeconds)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.LifetimeSeconds,
+	)
 	return i, err
 }
 

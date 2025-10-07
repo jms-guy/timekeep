@@ -24,7 +24,7 @@ const defaultConfig = `{
   }
 }`
 
-func LoadConfig() (*Config, error) {
+func Load() (*Config, error) {
 	configFile, err := getConfigLocation()
 	if err != nil {
 		return nil, err

@@ -40,7 +40,7 @@ func CLIServiceSetup() (*CLIService, error) {
 
 	service := CreateCLIService(store, store, store, &realServiceCommander{}, &realCommandExecutor{})
 
-	config, err := config.LoadConfig()
+	config, err := config.Load()
 	if err != nil {
 		return nil, err
 	}

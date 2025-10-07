@@ -9,8 +9,8 @@ SELECT name FROM tracked_programs;
 SELECT * FROM tracked_programs;
 
 -- name: AddProgram :exec
-INSERT OR IGNORE INTO tracked_programs (name)
-VALUES (?);
+INSERT OR IGNORE INTO tracked_programs (name, category)
+VALUES (?, ?);
 
 -- name: RemoveProgram :exec
 DELETE FROM tracked_programs

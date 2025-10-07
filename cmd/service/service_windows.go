@@ -54,6 +54,10 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
 	}
 
+	if s.eventCtrl.Config.WakaTime.Enabled {
+		s.eventCtrl.StartHeartbeats(s.sessions)
+	}
+
 	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
 
 	// Service mainloop, handles only SCM signals

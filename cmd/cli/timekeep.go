@@ -7,7 +7,7 @@ import (
 )
 
 func (s *CLIService) addProgramsCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "add",
 		Aliases: []string{"Add", "ADD"},
 		Short:   "Add a program to begin tracking",
@@ -16,9 +16,15 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			return s.AddPrograms(ctx, args)
+			category, _ := cmd.Flags().GetString("category")
+
+			return s.AddPrograms(ctx, args, category)
 		},
 	}
+
+	cmd.Flags().String("category", "", "Add category to tracked program(s). Category provided will be applied to all programs passed as arguments. (required for WakaTime integration)")
+
+	return cmd
 }
 
 func (s *CLIService) removeProgramsCmd() *cobra.Command {

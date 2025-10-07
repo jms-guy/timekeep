@@ -6,6 +6,7 @@ import (
 	"github.com/jms-guy/timekeep/cmd/service/internal/logs"
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
 	"github.com/jms-guy/timekeep/cmd/service/internal/transport"
+	"github.com/jms-guy/timekeep/internal/config"
 	"github.com/jms-guy/timekeep/internal/repository"
 	mysql "github.com/jms-guy/timekeep/sql"
 )
@@ -45,6 +46,13 @@ func ServiceSetup() (*timekeepService, error) {
 	ts := transport.NewTransporter()
 
 	service := NewTimekeepService(store, store, store, logger, eventCtrl, sessions, ts, d)
+
+	config, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	service.eventCtrl.Config = config
 
 	return service, nil
 }

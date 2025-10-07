@@ -11,13 +11,23 @@ import (
 )
 
 // Adds programs into the database, and sends communication to service to being tracking them
-func (s *CLIService) AddPrograms(ctx context.Context, args []string) error {
+func (s *CLIService) AddPrograms(ctx context.Context, args []string, category string) error {
 	var addedPrograms []string
+
+	categoryNull := sql.NullString{
+		String: category,
+		Valid:  category != "",
+	}
+
 	for _, program := range args {
-		err := s.PrRepo.AddProgram(ctx, strings.ToLower(program))
+		err := s.PrRepo.AddProgram(ctx, database.AddProgramParams{
+			Name:     strings.ToLower(program),
+			Category: categoryNull,
+		})
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
 		}
+
 		addedPrograms = append(addedPrograms, program)
 	}
 

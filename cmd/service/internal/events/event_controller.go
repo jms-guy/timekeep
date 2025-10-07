@@ -8,8 +8,10 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
+	"github.com/jms-guy/timekeep/internal/config"
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
@@ -21,8 +23,10 @@ type Command struct {
 }
 
 type EventController struct {
-	PsProcess *exec.Cmd // Powershell process for Windows event monitoring
-	cancel    context.CancelFunc
+	PsProcess           *exec.Cmd          // Powershell process for Windows event monitoring
+	cancel              context.CancelFunc // Event monitoring cancel context
+	Config              *config.Config     // Struct built from config file
+	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
 }
 
 func NewEventController() *EventController {
@@ -69,13 +73,13 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+	e.StopProcessMonitor()
+
 	programs, err := pr.GetAllProgramNames(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
 	}
-
-	e.StopProcessMonitor()
 
 	if len(programs) > 0 {
 		for _, program := range programs {
@@ -83,6 +87,20 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.
 		}
 		go e.MonitorProcesses(logger, s, pr, a, h, programs)
 	}
+
+	newConfig, err := config.Load()
+	if err != nil {
+		logger.Printf("ERROR: Failed to load config: %s", err)
+		return
+	}
+
+	if newConfig.WakaTime.Enabled && !e.Config.WakaTime.Enabled {
+		e.StartHeartbeats(s)
+	} else if !newConfig.WakaTime.Enabled && e.Config.WakaTime.Enabled {
+		e.StopHeartbeats()
+	}
+
+	e.Config = newConfig
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))
 }
