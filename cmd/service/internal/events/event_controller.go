@@ -72,20 +72,28 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 }
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
-func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (e *EventController) RefreshProcessMonitor(logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	e.StopProcessMonitor()
 
-	programs, err := pr.GetAllProgramNames(context.Background())
+	programs, err := pr.GetAllPrograms(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
 	}
 
 	if len(programs) > 0 {
+		toTrack := []string{}
 		for _, program := range programs {
-			s.EnsureProgram(program)
+			category := ""
+			if program.Category.Valid {
+				category = program.Category.String
+			}
+			sm.EnsureProgram(program.Name, category)
+
+			toTrack = append(toTrack, program.Name)
 		}
-		go e.MonitorProcesses(logger, s, pr, a, h, programs)
+
+		go e.MonitorProcesses(logger, sm, pr, a, h, toTrack)
 	}
 
 	newConfig, err := config.Load()
@@ -95,7 +103,7 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, s *sessions.
 	}
 
 	if newConfig.WakaTime.Enabled && !e.Config.WakaTime.Enabled {
-		e.StartHeartbeats(s)
+		e.StartHeartbeats(sm)
 	} else if !newConfig.WakaTime.Enabled && e.Config.WakaTime.Enabled {
 		e.StopHeartbeats()
 	}

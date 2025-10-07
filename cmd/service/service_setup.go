@@ -90,6 +90,9 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 
 // Service shutdown function
 func (s *timekeepService) closeService() {
+	if s.eventCtrl.Config.WakaTime.Enabled {
+		s.eventCtrl.StopHeartbeats()
+	}
 	s.eventCtrl.StopProcessMonitor() // Stop any current monitoring function
 	close(s.transport.Shutdown)      // Close open IPC
 	s.logger.FileCleanup()           // Close open logging file

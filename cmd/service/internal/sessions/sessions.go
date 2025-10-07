@@ -12,6 +12,7 @@ import (
 )
 
 type Tracked struct {
+	Category string
 	PIDs     map[int]struct{}
 	StartAt  time.Time
 	LastSeen time.Time
@@ -27,7 +28,7 @@ func NewSessionManager() *SessionManager {
 }
 
 // Make sure map is initialized, add program to map if not already present
-func (sm *SessionManager) EnsureProgram(name string) {
+func (sm *SessionManager) EnsureProgram(name, category string) {
 	sm.Mu.Lock()
 	defer sm.Mu.Unlock()
 
@@ -37,7 +38,7 @@ func (sm *SessionManager) EnsureProgram(name string) {
 
 	name = strings.ToLower(name)
 	if _, ok := sm.Programs[name]; !ok {
-		sm.Programs[name] = &Tracked{PIDs: make(map[int]struct{})}
+		sm.Programs[name] = &Tracked{Category: category, PIDs: make(map[int]struct{})}
 	}
 }
 

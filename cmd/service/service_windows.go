@@ -40,18 +40,26 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 
 	status <- svc.Status{State: svc.StartPending}
-	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	programs, err := s.prRepo.GetAllProgramNames(context.Background())
+	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		s.logger.Logger.Printf("ERROR: Failed to get programs: %s", err)
+		status <- svc.Status{State: svc.Stopped}
 		return false, 1
 	}
 	if len(programs) > 0 {
+		toTrack := []string{}
 		for _, program := range programs {
-			s.sessions.EnsureProgram(program)
+			category := ""
+			if program.Category.Valid {
+				category = program.Category.String
+			}
+			s.sessions.EnsureProgram(program.Name, category)
+
+			toTrack = append(toTrack, program.Name)
 		}
-		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
+
+		s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
 	if s.eventCtrl.Config.WakaTime.Enabled {
@@ -59,6 +67,8 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	}
 
 	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
+
+	status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 	// Service mainloop, handles only SCM signals
 loop:
@@ -69,11 +79,22 @@ loop:
 			case svc.Interrogate: // Check current status of service
 				status <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown: // Service needs to be stopped or shutdown
+				s.logger.Logger.Println("INFO: Received stop signal")
 				s.closeService()
 				break loop
 			case svc.Pause: // Service needs to be paused, without shutdown
+				s.logger.Logger.Println("INFO: Pausing service")
+				if s.eventCtrl.Config.WakaTime.Enabled {
+					s.eventCtrl.StopHeartbeats()
+				}
+				s.eventCtrl.StopProcessMonitor()
 				status <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
 			case svc.Continue: // Resume paused execution state of service
+				s.logger.Logger.Println("INFO: Resuming service")
+				s.eventCtrl.RefreshProcessMonitor(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
+				if s.eventCtrl.Config.WakaTime.Enabled {
+					s.eventCtrl.StartHeartbeats(s.sessions)
+				}
 				status <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 			default:
 				s.logger.Logger.Printf("ERROR: Unexpected service control request #%d", c)
