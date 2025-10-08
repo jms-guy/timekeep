@@ -16,6 +16,8 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+var Version = "dev"
+
 // Command details communicated by pipe
 type Command struct {
 	Action      string `json:"action"`
@@ -29,10 +31,11 @@ type EventController struct {
 	Config              *config.Config     // Struct built from config file
 	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
 	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
+	version             string             // Timekeep version
 }
 
 func NewEventController() *EventController {
-	return &EventController{}
+	return &EventController{version: Version}
 }
 
 // Handles service commands read from pipe/socket connection

@@ -15,8 +15,8 @@ jobs:
       - name: Build binaries
         run: |
           # Service binaries
-          GOOS=windows go build -o timekeep-service.exe ./cmd/service
-          GOOS=linux go build -o timekeepd ./cmd/service 
+          GOOS=windows go build -ldflags "-X github.com/jms-guy/timekeep/cmd/service/internal/events.Version=${{ github.ref_name }}" -o timekeep-service.exe ./cmd/service
+          GOOS=linux go build -ldflags "-X github.com/jms-guy/timekeep/cmd/service/internal/events.Version=${{ github.ref_name }}" -o timekeepd ./cmd/service 
           
           # CLI binaries
           GOOS=windows go build -ldflags "-X main.Version=${{ github.ref_name }}" -o timekeep.exe ./cmd/cli
