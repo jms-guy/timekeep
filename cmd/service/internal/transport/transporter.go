@@ -1,9 +1,7 @@
 package transport
 
-type Transporter struct {
-	Shutdown chan struct{}
-}
+type Transporter struct{}
 
 func NewTransporter() *Transporter {
-	return &Transporter{Shutdown: make(chan struct{})}
+	return &Transporter{}
 }

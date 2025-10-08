@@ -19,13 +19,11 @@ import (
 )
 
 // Main process monitoring function for Linux version
-func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	if e.cancel != nil {
 		e.cancel()
 		e.cancel = nil
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	e.cancel = cancel
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -35,14 +33,14 @@ func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.Sessi
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			livePIDS := e.checkForProcessStartEvents(logger, s, a, programs)
-			e.checkForProcessStopEvents(logger, s, pr, a, h, livePIDS)
+			livePIDS := e.checkForProcessStartEvents(ctx, logger, sm, a, programs)
+			e.checkForProcessStopEvents(ctx, logger, sm, pr, a, h, livePIDS)
 		}
 	}
 }
 
 // Polls /proc and loops over PID entries, looking for any new PIDS belonging to tracked programs
-func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sessions.SessionManager, a repository.ActiveRepository, programs []string) map[int]struct{} {
+func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, a repository.ActiveRepository, programs []string) map[int]struct{} {
 	entries, err := os.ReadDir("/proc") // Read /proc
 	if err != nil {
 		logger.Printf("ERROR: Couldn't read /proc: %s", err)
@@ -65,23 +63,23 @@ func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sess
 			continue
 		}
 
-		s.Mu.Lock()
-		_, match := s.Programs[identity] // Is program being tracked?
+		sm.Mu.Lock()
+		_, match := sm.Programs[identity] // Is program being tracked?
 		if !match {
-			s.Mu.Unlock()
+			sm.Mu.Unlock()
 			continue
 		}
 
-		if t := s.Programs[identity]; t != nil {
+		if t := sm.Programs[identity]; t != nil {
 			if _, exists := t.PIDs[pid]; exists {
 				t.LastSeen = time.Now()
-				s.Mu.Unlock()
+				sm.Mu.Unlock()
 				continue
 			}
 		}
-		s.Mu.Unlock()
+		sm.Mu.Unlock()
 
-		s.CreateSession(logger, a, identity, pid)
+		sm.CreateSession(ctx, logger, a, identity, pid)
 	}
 
 	return live
@@ -89,12 +87,12 @@ func (e *EventController) checkForProcessStartEvents(logger *log.Logger, s *sess
 
 // Takes the PID entries found in the previous check function, and compares them against map of active PIDs, to determine if
 // any active sessions need ending
-func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
+func (e *EventController) checkForProcessStopEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
 	if livePIDs == nil {
 		livePIDs = map[int]struct{}{}
 	}
 
-	s.Mu.Lock()
+	sm.Mu.Lock()
 	type toEnd struct {
 		program string
 		pid     int
@@ -104,7 +102,7 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessi
 	now := time.Now()
 	// Loop tracked programs. For each PID currently being tracked, check if it exists in the live map. If it does, update last seen value,
 	// else schedule the PID to be removed from tracking
-	for program, t := range s.Programs {
+	for program, t := range sm.Programs {
 		if t == nil {
 			continue
 		}
@@ -118,10 +116,10 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, s *sessi
 			ends = append(ends, toEnd{program, pid})
 		}
 	}
-	s.Mu.Unlock()
+	sm.Mu.Unlock()
 
 	for _, eend := range ends {
-		s.EndSession(logger, pr, a, h, eend.program, eend.pid)
+		sm.EndSession(ctx, logger, pr, a, h, eend.program, eend.pid)
 	}
 }
 

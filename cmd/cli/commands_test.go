@@ -18,7 +18,7 @@ func setupTestServiceWithPrograms(t *testing.T, programNames ...string) (*cli.CL
 	}
 
 	for _, name := range programNames {
-		err = s.PrRepo.AddProgram(context.Background(), name)
+		err = s.PrRepo.AddProgram(context.Background(), database.AddProgramParams{Name: name})
 		if err != nil {
 			t.Fatalf("Failed to add program '%s': %v", name, err)
 		}
@@ -48,7 +48,7 @@ func TestAddPrograms(t *testing.T) {
 	}
 
 	programsToAdd := []string{"notepad.exe", "code.exe"}
-	err = s.AddPrograms(t.Context(), programsToAdd)
+	err = s.AddPrograms(t.Context(), programsToAdd, "")
 	assert.Nil(t, err, "AddPrograms should not return error")
 
 	addedPrograms, err := s.PrRepo.GetAllProgramNames(t.Context())

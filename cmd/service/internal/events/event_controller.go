@@ -8,6 +8,7 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
@@ -27,6 +28,7 @@ type EventController struct {
 	cancel              context.CancelFunc // Event monitoring cancel context
 	Config              *config.Config     // Struct built from config file
 	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
+	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
 }
 
 func NewEventController() *EventController {
@@ -34,7 +36,7 @@ func NewEventController() *EventController {
 }
 
 // Handles service commands read from pipe/socket connection
-func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, conn net.Conn) {
+func (e *EventController) HandleConnection(serviceCtx context.Context, logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, conn net.Conn) {
 	defer conn.Close()
 
 	logger.Println("INFO: Starting to read from connection.")
@@ -51,19 +53,23 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 
 		cmd.ProcessName = strings.ToLower(cmd.ProcessName)
 
+		cmdCtx, cancel := context.WithTimeout(serviceCtx, 5*time.Second)
+
 		switch cmd.Action {
 		case "process_start":
-			s.CreateSession(logger, a, cmd.ProcessName, cmd.ProcessID)
+			s.CreateSession(cmdCtx, logger, a, cmd.ProcessName, cmd.ProcessID)
 			logger.Printf("INFO: Called createSession for %s (PID: %d)", cmd.ProcessName, cmd.ProcessID)
 		case "process_stop":
-			s.EndSession(logger, pr, a, h, cmd.ProcessName, cmd.ProcessID)
+			s.EndSession(cmdCtx, logger, pr, a, h, cmd.ProcessName, cmd.ProcessID)
 			logger.Printf("INFO: Called endSession for %s (PID: %d)", cmd.ProcessName, cmd.ProcessID)
 		case "refresh":
-			e.RefreshProcessMonitor(logger, s, pr, a, h)
+			e.RefreshProcessMonitor(cmdCtx, logger, s, pr, a, h)
 			logger.Println("INFO: Called refreshProcessMonitor")
 		default:
 			logger.Printf("WARN: Received unknown command action: %s", cmd.Action)
 		}
+
+		cancel()
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -72,10 +78,10 @@ func (e *EventController) HandleConnection(logger *log.Logger, s *sessions.Sessi
 }
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
-func (e *EventController) RefreshProcessMonitor(logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	e.StopProcessMonitor()
 
-	programs, err := pr.GetAllPrograms(context.Background())
+	programs, err := pr.GetAllPrograms(ctx)
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
@@ -93,7 +99,7 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, sm *sessions
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go e.MonitorProcesses(logger, sm, pr, a, h, toTrack)
+		go e.MonitorProcesses(ctx, logger, sm, pr, a, h, toTrack)
 	}
 
 	newConfig, err := config.Load()
@@ -103,7 +109,7 @@ func (e *EventController) RefreshProcessMonitor(logger *log.Logger, sm *sessions
 	}
 
 	if newConfig.WakaTime.Enabled && !e.Config.WakaTime.Enabled {
-		e.StartHeartbeats(sm)
+		e.StartHeartbeats(ctx, logger, sm)
 	} else if !newConfig.WakaTime.Enabled && e.Config.WakaTime.Enabled {
 		e.StopHeartbeats()
 	}

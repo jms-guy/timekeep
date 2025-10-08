@@ -3,6 +3,7 @@
 package transport
 
 import (
+	"context"
 	"log"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/events"
@@ -10,6 +11,6 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
-func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (t *Transporter) Listen(ctx context.Context, logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	return
 }

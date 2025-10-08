@@ -4,6 +4,7 @@ package events
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"log"
 	"os"
@@ -20,12 +21,12 @@ import (
 var monitorScript string
 
 // Main process monitoring function for Windows version
-func (e *EventController) MonitorProcesses(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
-	e.startProcessMonitor(logger, programs)
+func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	e.startProcessMonitor(ctx, logger, programs)
 }
 
 // Runs the powershell WMI script, to monitor process events
-func (e *EventController) startProcessMonitor(logger *log.Logger, programs []string) {
+func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.Logger, programs []string) {
 	programList := strings.Join(programs, ",")
 
 	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")
@@ -58,7 +59,7 @@ func (e *EventController) startProcessMonitor(logger *log.Logger, programs []str
 	time.Sleep(100 * time.Millisecond) // Pause to allow tempfile to finish writing before it attempts to execute
 
 	args := []string{"-ExecutionPolicy", "Bypass", "-File", tempFile.Name(), "-Programs", programList}
-	cmd := exec.Command("powershell", args...)
+	cmd := exec.CommandContext(ctx, "powershell", args...)
 	e.PsProcess = cmd
 
 	var stderr bytes.Buffer
@@ -77,6 +78,13 @@ func (e *EventController) startProcessMonitor(logger *log.Logger, programs []str
 		defer os.Remove(tempFile.Name())
 
 		err := cmd.Wait()
+
+		select {
+		case <-ctx.Done():
+			logger.Println("INFO: PowerShell monitor stopped due to context cancellation")
+			return
+		default:
+		}
 		if err != nil {
 			logger.Printf("ERROR: PowerShell monitor process exited with error: %s", err)
 		} else {
