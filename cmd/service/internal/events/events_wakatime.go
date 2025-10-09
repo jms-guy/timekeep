@@ -1,10 +1,13 @@
 package events
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"os/exec"
+	"net/http"
 	"time"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
@@ -16,6 +19,8 @@ func (e *EventController) StartHeartbeats(ctx context.Context, logger *log.Logge
 	e.wakaHeartbeatTicker = time.NewTicker(1 * time.Minute)
 	ticker := e.wakaHeartbeatTicker
 	e.heartbeatMu.Unlock()
+
+	logger.Println("INFO: Starting WakaTime heartbeats")
 
 	go func() {
 		defer func() {
@@ -72,15 +77,38 @@ func (e *EventController) sendHeartbeats(ctx context.Context, sm *sessions.Sessi
 
 // Call the wakatime-cli heartbeat command
 func (e *EventController) sendWakaHeartbeat(ctx context.Context, program, category string) error {
-	cmd := exec.CommandContext(ctx,
-		"wakatime-cli",
-		"--entity", program,
-		"--entity-type", "app",
-		"--plugin", "timekeep/"+e.version,
-		"--category", category,
-		"--time", fmt.Sprintf("%d", time.Now().Unix()))
+	heartbeat := map[string]interface{}{
+		"entity":   program,
+		"type":     "app",
+		"category": category,
+		"time":     float64(time.Now().Unix()),
+	}
 
-	return cmd.Run()
+	body, _ := json.Marshal([]map[string]interface{}{heartbeat})
+
+	req, err := http.NewRequestWithContext(ctx, "POST",
+		"https://api.wakatime.com/api/v1/users/current/heartbeats.bulk",
+		bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+e.Config.WakaTime.APIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("wakatime API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
 }
 
 // Stops WakaTime heartbeat ticker after disabling integration

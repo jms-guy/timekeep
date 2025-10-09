@@ -35,7 +35,7 @@ func Load() (*Config, error) {
 	}
 
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		err := os.WriteFile(configFile, []byte(defaultConfig), 0o644)
+		err := os.WriteFile(configFile, []byte(defaultConfig), 0o600)
 		if err != nil {
 			return nil, fmt.Errorf("error generating default config: %w", err)
 		}

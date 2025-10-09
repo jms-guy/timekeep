@@ -14,7 +14,7 @@ import (
 func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "timekeep",
-		Short: "Timekeep is a process tracking service",
+		Short: "Timekeep is a process activity tracker",
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}

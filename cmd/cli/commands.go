@@ -12,8 +12,6 @@ import (
 
 // Adds programs into the database, and sends communication to service to being tracking them
 func (s *CLIService) AddPrograms(ctx context.Context, args []string, category string) error {
-	var addedPrograms []string
-
 	categoryNull := sql.NullString{
 		String: category,
 		Valid:  category != "",
@@ -27,8 +25,6 @@ func (s *CLIService) AddPrograms(ctx context.Context, args []string, category st
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
 		}
-
-		addedPrograms = append(addedPrograms, program)
 	}
 
 	err := s.ServiceCmd.WriteToService()
@@ -36,7 +32,6 @@ func (s *CLIService) AddPrograms(ctx context.Context, args []string, category st
 		return fmt.Errorf("programs added but failed to notify service: %w", err)
 	}
 
-	fmt.Printf("Added %d program(s) to track\n", len(addedPrograms))
 	return nil
 }
 
@@ -53,17 +48,14 @@ func (s *CLIService) RemovePrograms(ctx context.Context, args []string, all bool
 			return fmt.Errorf("error alerting service of program removal: %w", err)
 		}
 
-		fmt.Println("All programs removed from tracking")
 		return nil
 	}
 
-	var removedPrograms []string
 	for _, program := range args {
 		err := s.PrRepo.RemoveProgram(ctx, strings.ToLower(program))
 		if err != nil {
 			return fmt.Errorf("error removing program %s: %w", program, err)
 		}
-		removedPrograms = append(removedPrograms, program)
 	}
 
 	err := s.ServiceCmd.WriteToService()
@@ -71,7 +63,6 @@ func (s *CLIService) RemovePrograms(ctx context.Context, args []string, all bool
 		return fmt.Errorf("programs removed but failed to notify service: %w", err)
 	}
 
-	fmt.Printf("Removed %d program(s) from tracking\n", len(removedPrograms))
 	return nil
 }
 
@@ -83,11 +74,9 @@ func (s *CLIService) GetList(ctx context.Context) error {
 	}
 
 	if len(programs) == 0 {
-		fmt.Println("No programs are currently being tracked")
 		return nil
 	}
 
-	fmt.Println("Programs currently being tracked:")
 	for _, program := range programs {
 		fmt.Printf(" • %s\n", program)
 	}
@@ -103,7 +92,6 @@ func (s *CLIService) GetAllInfo(ctx context.Context) error {
 	}
 
 	if len(programs) == 0 {
-		fmt.Println("No programs are currently being tracked")
 		return nil
 	}
 
@@ -136,7 +124,6 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 	lastSession, err := s.HsRepo.GetLastSessionForProgram(ctx, program.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Printf("Statistics for %s:\n", program.Name)
 			s.formatDuration(" • Current Lifetime: ", duration)
 			fmt.Printf(" • Total sessions to date: 0\n")
 			fmt.Printf(" • Last Session: No sessions recorded yet\n")
@@ -151,7 +138,6 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
 
-	fmt.Printf("Statistics for %s:\n", program.Name)
 	s.formatDuration(" • Current Lifetime: ", duration)
 	fmt.Printf(" • Total sessions to date: %d\n", sessionCount)
 
@@ -194,14 +180,7 @@ func (s *CLIService) GetSessionHistory(ctx context.Context, args []string, date,
 	}
 
 	if len(history) == 0 {
-		fmt.Println("No session history present")
 		return nil
-	}
-
-	if programName != "" {
-		fmt.Printf("Session history for %s: \n", programName)
-	} else {
-		fmt.Println("Session history: ")
 	}
 
 	for _, session := range history {
@@ -218,7 +197,6 @@ func (s *CLIService) ResetStats(ctx context.Context, args []string, all bool) er
 		if err != nil {
 			return err
 		}
-		fmt.Println("All session records reset")
 
 	} else {
 		if len(args) == 0 {
@@ -233,12 +211,11 @@ func (s *CLIService) ResetStats(ctx context.Context, args []string, all bool) er
 			}
 		}
 
-		fmt.Printf("Session records for %d programs reset\n", len(args))
 	}
 
 	err := s.ServiceCmd.WriteToService()
 	if err != nil {
-		fmt.Printf("Warning: Failed to notify service of reset: %v\n", err)
+		fmt.Printf("Warning: Failed to notify service: %v\n", err)
 	}
 
 	return nil
@@ -289,11 +266,9 @@ func (s *CLIService) GetActiveSessions(ctx context.Context) error {
 		return fmt.Errorf("error getting active sessions: %w", err)
 	}
 	if len(activeSessions) == 0 {
-		fmt.Println("No active sessions.")
 		return nil
 	}
 
-	fmt.Println("Active sessions: ")
 	for _, session := range activeSessions {
 		duration := time.Since(session.StartTime)
 		sessionDetails := fmt.Sprintf(" • %s - ", session.ProgramName)
@@ -313,65 +288,37 @@ func (s *CLIService) GetVersion() error {
 // Changes config to enable WakaTime with API key
 func (s *CLIService) EnableWakaTime(apiKey string) error {
 	if s.Config.WakaTime.Enabled {
-		fmt.Println("WakaTime integration already enabled")
 		return nil
 	}
 
 	if apiKey != "" {
 		s.Config.WakaTime.APIKey = apiKey
-		s.Config.WakaTime.Enabled = true
-
-		err := s.Config.Save()
-		if err != nil {
-			return err
-		}
-		err = s.ServiceCmd.WriteToService()
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("WakaTime integration enabled")
-		return nil
 	}
 
-	if s.Config.WakaTime.APIKey != "" {
-		s.Config.WakaTime.Enabled = true
-
-		err := s.Config.Save()
-		if err != nil {
-			return err
-		}
-		err = s.ServiceCmd.WriteToService()
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("WakaTime integration enabled")
-		return nil
+	if s.Config.WakaTime.APIKey == "" {
+		return fmt.Errorf("WakaTime API key required. Use: timekeep wakatime enable --api-key <key>")
 	}
 
-	fmt.Println("User must provide a WakaTime API key")
+	s.Config.WakaTime.Enabled = true
+
+	if err := s.saveAndNotify(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Disables WakaTime in config
 func (s *CLIService) DisableWakaTime() error {
 	if !s.Config.WakaTime.Enabled {
-		fmt.Println("WakaTime integration disabled")
 		return nil
 	}
 
 	s.Config.WakaTime.Enabled = false
 
-	err := s.Config.Save()
-	if err != nil {
-		return err
-	}
-	err = s.ServiceCmd.WriteToService()
-	if err != nil {
+	if err := s.saveAndNotify(); err != nil {
 		return err
 	}
 
-	fmt.Println("WakaTime integration disabled")
 	return nil
 }
