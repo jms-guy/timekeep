@@ -219,3 +219,15 @@ func (s *CLIService) wakatimeDisable() *cobra.Command {
 		},
 	}
 }
+
+func (s *CLIService) wakatimeSetCLIPath() *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-path",
+		Aliases: []string{"SET-PATH"},
+		Short:   "Set absolute path for wakatime-cli",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.SetCLIPath(args)
+		},
+	}
+}

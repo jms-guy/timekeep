@@ -15,6 +15,7 @@ type Config struct {
 type WakaTimeConfig struct {
 	Enabled bool   `json:"enabled"`
 	APIKey  string `json:"api_key,omitempty"`
+	CLIPath string `json:"cli_path,omitempty"`
 }
 
 const defaultConfig = `{

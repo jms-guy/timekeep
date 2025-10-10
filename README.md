@@ -38,16 +38,13 @@ A process activity tracker, it runs as a background service recording start/stop
 ```powershell
 timekeep add notepad.exe  # Add notepad
 timekeep ls               # List currently tracked programs
-Programs currently being tracked:
  • notepad.exe
 timekeep info notepad.exe # Basic info for program sessions
-Statistics for notepad.exe:
  • Current Lifetime: 19h 41m
  • Total sessions to date: 4
  • Last Session: 2025-09-26 11:25 - 2025-09-26 11:26 (21 seconds)
  • Average session length: 4h 55m
 timekeep history notepad.exe  # Session history for program
-Session history for notepad.exe:
   notepad.exe | 2025-09-26 11:25 - 2025-09-26 11:26 | Duration: 21 seconds
   notepad.exe | 2025-09-24 13:49 - 2025-09-24 13:50 | Duration: 39 seconds
   notepad.exe | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
@@ -79,7 +76,7 @@ GOOS=windows go build -o timekeep-service.exe ./cmd/service
 GOOS=windows go build -o timekeep.exe ./cmd/cli
 
 # Install and start service (Run as Administrator)
-sc.exe create timekeep binPath= "C:\Program Files\Timekeep\timekeep-service.exe" start= auto
+sc.exe create timekeep binPath= "C:\Program Files\Timekeep\timekeep-service.exe" start= auto # Assuming this is the location of service binary
 sc.exe start timekeep
 
 # Verify service is running

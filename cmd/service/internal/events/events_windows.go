@@ -59,7 +59,7 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 	time.Sleep(100 * time.Millisecond) // Pause to allow tempfile to finish writing before it attempts to execute
 
 	args := []string{"-ExecutionPolicy", "Bypass", "-File", tempFile.Name(), "-Programs", programList}
-	cmd := exec.CommandContext(ctx, "powershell", args...)
+	cmd := exec.Command("powershell", args...)
 	e.PsProcess = cmd
 
 	var stderr bytes.Buffer
@@ -81,10 +81,11 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 
 		select {
 		case <-ctx.Done():
-			logger.Println("INFO: PowerShell monitor stopped due to context cancellation")
+			logger.Println("INFO: Powershell monitor stopped due to context cancellation")
 			return
 		default:
 		}
+
 		if err != nil {
 			logger.Printf("ERROR: PowerShell monitor process exited with error: %s", err)
 		} else {

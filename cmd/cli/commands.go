@@ -322,3 +322,15 @@ func (s *CLIService) DisableWakaTime() error {
 
 	return nil
 }
+
+// Sets wakatime-cli file path
+func (s *CLIService) SetCLIPath(args []string) error {
+	newPath := args[0]
+	s.Config.WakaTime.CLIPath = newPath
+
+	if err := s.saveAndNotify(); err != nil {
+		return err
+	}
+
+	return nil
+}
