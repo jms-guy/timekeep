@@ -11,16 +11,22 @@ import (
 )
 
 // Adds programs into the database, and sends communication to service to being tracking them
-func (s *CLIService) AddPrograms(ctx context.Context, args []string, category string) error {
+func (s *CLIService) AddPrograms(ctx context.Context, args []string, category, project string) error {
 	categoryNull := sql.NullString{
 		String: category,
 		Valid:  category != "",
+	}
+
+	projectNull := sql.NullString{
+		String: project,
+		Valid:  project != "",
 	}
 
 	for _, program := range args {
 		err := s.PrRepo.AddProgram(ctx, database.AddProgramParams{
 			Name:     strings.ToLower(program),
 			Category: categoryNull,
+			Project:  projectNull,
 		})
 		if err != nil {
 			return fmt.Errorf("error adding program %s: %w", program, err)
@@ -30,6 +36,38 @@ func (s *CLIService) AddPrograms(ctx context.Context, args []string, category st
 	err := s.ServiceCmd.WriteToService()
 	if err != nil {
 		return fmt.Errorf("programs added but failed to notify service: %w", err)
+	}
+
+	return nil
+}
+
+// Update program's category/project fields and notify service of change
+func (s *CLIService) UpdateProgram(ctx context.Context, args []string, category, project string) error {
+	program := args[0]
+
+	if category != "" {
+		err := s.PrRepo.UpdateCategory(ctx, database.UpdateCategoryParams{
+			Category: sql.NullString{String: category, Valid: true},
+			Name:     program,
+		})
+		if err != nil {
+			return fmt.Errorf("error updating program category: %w", err)
+		}
+	}
+
+	if project != "" {
+		err := s.PrRepo.UpdateProject(ctx, database.UpdateProjectParams{
+			Project: sql.NullString{String: project, Valid: true},
+			Name:    program,
+		})
+		if err != nil {
+			return fmt.Errorf("error updating program project: %w", err)
+		}
+	}
+
+	err := s.ServiceCmd.WriteToService()
+	if err != nil {
+		return fmt.Errorf("programs updated but failed to notify service: %w", err)
 	}
 
 	return nil
@@ -124,10 +162,15 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 	lastSession, err := s.HsRepo.GetLastSessionForProgram(ctx, program.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Printf(" • Category: %s", program.Category.String)
+			if program.Category.String != "" {
+				fmt.Printf(" • Category: %s\n", program.Category.String)
+			}
+			if program.Project.String != "" {
+				fmt.Printf(" • Project: %s\n", program.Project.String)
+			}
 			s.formatDuration(" • Current Lifetime: ", duration)
 			fmt.Printf(" • Total sessions to date: 0\n")
-			fmt.Printf(" • Last Session: No sessions recorded yet\n")
+			fmt.Printf(" • Last Session: None\n")
 			return nil
 		} else {
 			return fmt.Errorf("error getting last session for %s: %w", program.Name, err)
@@ -139,7 +182,12 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
 
-	fmt.Printf(" • Category: %s", program.Category.String)
+	if program.Category.String != "" {
+		fmt.Printf(" • Category: %s\n", program.Category.String)
+	}
+	if program.Project.String != "" {
+		fmt.Printf(" • Project: %s\n", program.Project.String)
+	}
 	s.formatDuration(" • Current Lifetime: ", duration)
 	fmt.Printf(" • Total sessions to date: %d\n", sessionCount)
 
@@ -340,6 +388,29 @@ func (s *CLIService) SetCLIPath(args []string) error {
 
 	if err := s.saveAndNotify(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// Sets global_project variable in config
+func (s *CLIService) SetGlobalProject(args []string) error {
+	project := args[0]
+	s.Config.WakaTime.GlobalProject = project
+
+	if err := s.saveAndNotify(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Returns WakaTime enabled/disabled status for user
+func (s *CLIService) StatusWakatime() error {
+	if s.Config.WakaTime.Enabled {
+		fmt.Println("enabled")
+	} else {
+		fmt.Println("disabled")
 	}
 
 	return nil

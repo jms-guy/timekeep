@@ -26,6 +26,7 @@ type SessionHistory struct {
 type TrackedProgram struct {
 	ID              int64
 	Name            string
-	Category        sql.NullString
 	LifetimeSeconds int64
+	Category        sql.NullString
+	Project         sql.NullString
 }

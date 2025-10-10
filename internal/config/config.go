@@ -13,15 +13,18 @@ type Config struct {
 }
 
 type WakaTimeConfig struct {
-	Enabled bool   `json:"enabled"`
-	APIKey  string `json:"api_key,omitempty"`
-	CLIPath string `json:"cli_path,omitempty"`
+	Enabled       bool   `json:"enabled"`
+	APIKey        string `json:"api_key,omitempty"`
+	CLIPath       string `json:"cli_path,omitempty"`
+	GlobalProject string `json:"global_project,omitempty"`
 }
 
 const defaultConfig = `{
   "wakatime": {
     "enabled": false,
-	"api_key": ""
+	"api_key": "",
+	"cli_path": "",
+	"global_project": ""
   }
 }`
 

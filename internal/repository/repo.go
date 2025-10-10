@@ -19,6 +19,8 @@ type ProgramRepository interface {
 	ResetAllLifetimes(ctx context.Context) error
 	ResetLifetimeForProgram(ctx context.Context, name string) error
 	UpdateLifetime(ctx context.Context, arg database.UpdateLifetimeParams) error
+	UpdateCategory(ctx context.Context, arg database.UpdateCategoryParams) error
+	UpdateProject(ctx context.Context, arg database.UpdateProjectParams) error
 }
 
 type ActiveRepository interface {
@@ -89,6 +91,14 @@ func (s *sqliteStore) ResetLifetimeForProgram(ctx context.Context, name string) 
 
 func (s *sqliteStore) UpdateLifetime(ctx context.Context, arg database.UpdateLifetimeParams) error {
 	return s.db.UpdateLifetime(ctx, arg)
+}
+
+func (s *sqliteStore) UpdateCategory(ctx context.Context, arg database.UpdateCategoryParams) error {
+	return s.db.UpdateCategory(ctx, arg)
+}
+
+func (s *sqliteStore) UpdateProject(ctx context.Context, arg database.UpdateProjectParams) error {
+	return s.db.UpdateProject(ctx, arg)
 }
 
 ////////////////// Active Repository //////////////////

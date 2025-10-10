@@ -17,12 +17,36 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			category, _ := cmd.Flags().GetString("category")
+			project, _ := cmd.Flags().GetString("project")
 
-			return s.AddPrograms(ctx, args, category)
+			return s.AddPrograms(ctx, args, category, project)
 		},
 	}
 
 	cmd.Flags().String("category", "", "Add category to tracked program(s). Category provided will be applied to all programs passed as arguments. (required for WakaTime integration)")
+	cmd.Flags().String("project", "", "Add project to tracked program(s). Project will be applied to all programs passed as arguments.")
+
+	return cmd
+}
+
+func (s *CLIService) updateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "update",
+		Aliases: []string{"UPDATE"},
+		Short:   "Update category/project fields for tracked programs",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			category, _ := cmd.Flags().GetString("category")
+			project, _ := cmd.Flags().GetString("project")
+
+			return s.UpdateProgram(ctx, args, category, project)
+		},
+	}
+
+	cmd.Flags().String("category", "", "Alter program's category field")
+	cmd.Flags().String("project", "", "Alter program's project field")
 
 	return cmd
 }
@@ -192,6 +216,17 @@ func (s *CLIService) wakatimeIntegration() *cobra.Command {
 	}
 }
 
+func (s *CLIService) wakatimeStatus() *cobra.Command {
+	return &cobra.Command{
+		Use:     "status",
+		Aliases: []string{"STATUS"},
+		Short:   "Show WakaTime current enabled/disabled status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.StatusWakatime()
+		},
+	}
+}
+
 func (s *CLIService) wakatimeEnable() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "enable",
@@ -230,6 +265,18 @@ func (s *CLIService) wakatimeSetCLIPath() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.SetCLIPath(args)
+		},
+	}
+}
+
+func (s *CLIService) wakatimeSetGlobalProject() *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-project",
+		Aliases: []string{"SET-PROJECT"},
+		Short:   "Set global project variable for WakaTime data sorting",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.SetGlobalProject(args)
 		},
 	}
 }

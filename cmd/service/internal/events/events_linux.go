@@ -33,14 +33,14 @@ func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logg
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			livePIDS := e.checkForProcessStartEvents(ctx, logger, sm, a, programs)
+			livePIDS := e.checkForProcessStartEvents(ctx, logger, sm, a)
 			e.checkForProcessStopEvents(ctx, logger, sm, pr, a, h, livePIDS)
 		}
 	}
 }
 
 // Polls /proc and loops over PID entries, looking for any new PIDS belonging to tracked programs
-func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, a repository.ActiveRepository, programs []string) map[int]struct{} {
+func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, a repository.ActiveRepository) map[int]struct{} {
 	entries, err := os.ReadDir("/proc") // Read /proc
 	if err != nil {
 		logger.Printf("ERROR: Couldn't read /proc: %s", err)

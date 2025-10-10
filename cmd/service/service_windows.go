@@ -57,7 +57,11 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 			if program.Category.Valid {
 				category = program.Category.String
 			}
-			s.sessions.EnsureProgram(program.Name, category)
+			project := ""
+			if program.Project.Valid {
+				project = program.Project.String
+			}
+			s.sessions.EnsureProgram(program.Name, category, project)
 
 			toTrack = append(toTrack, program.Name)
 		}

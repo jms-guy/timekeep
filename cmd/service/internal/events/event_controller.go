@@ -66,7 +66,7 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 			s.EndSession(cmdCtx, logger, pr, a, h, cmd.ProcessName, cmd.ProcessID)
 			logger.Printf("INFO: Called endSession for %s (PID: %d)", cmd.ProcessName, cmd.ProcessID)
 		case "refresh":
-			e.RefreshProcessMonitor(cmdCtx, logger, s, pr, a, h)
+			e.RefreshProcessMonitor(serviceCtx, logger, s, pr, a, h)
 			logger.Println("INFO: Called refreshProcessMonitor")
 		default:
 			logger.Printf("WARN: Received unknown command action: %s", cmd.Action)
@@ -83,6 +83,7 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	e.StopProcessMonitor()
+	e.StopHeartbeats()
 
 	programs, err := pr.GetAllPrograms(ctx)
 	if err != nil {
@@ -94,10 +95,14 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 		toTrack := []string{}
 		for _, program := range programs {
 			category := ""
+			project := ""
 			if program.Category.Valid {
 				category = program.Category.String
 			}
-			sm.EnsureProgram(program.Name, category)
+			if program.Project.Valid {
+				project = program.Project.String
+			}
+			sm.EnsureProgram(program.Name, category, project)
 
 			toTrack = append(toTrack, program.Name)
 		}
@@ -111,13 +116,11 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 		return
 	}
 
-	if newConfig.WakaTime.Enabled && !e.Config.WakaTime.Enabled {
-		e.StartHeartbeats(ctx, logger, sm)
-	} else if !newConfig.WakaTime.Enabled && e.Config.WakaTime.Enabled {
-		e.StopHeartbeats()
-	}
-
 	e.Config = newConfig
+
+	if e.Config.WakaTime.Enabled {
+		e.StartHeartbeats(ctx, logger, sm)
+	}
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))
 }

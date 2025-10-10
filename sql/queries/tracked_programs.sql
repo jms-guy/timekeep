@@ -9,8 +9,8 @@ SELECT name FROM tracked_programs;
 SELECT * FROM tracked_programs;
 
 -- name: AddProgram :exec
-INSERT OR IGNORE INTO tracked_programs (name, category)
-VALUES (?, ?);
+INSERT OR IGNORE INTO tracked_programs (name, category, project)
+VALUES (?, ?, ?);
 
 -- name: RemoveProgram :exec
 DELETE FROM tracked_programs
@@ -32,3 +32,13 @@ WHERE name = ?;
 -- name: ResetAllLifetimes :exec
 UPDATE tracked_programs 
 SET lifetime_seconds = 0;
+
+-- name: UpdateCategory :exec 
+UPDATE tracked_programs
+SET category = ?
+WHERE name = ?;
+
+-- name: UpdateProject :exec
+UPDATE tracked_programs
+SET project = ?
+WHERE name = ?;

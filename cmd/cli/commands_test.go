@@ -48,7 +48,7 @@ func TestAddPrograms(t *testing.T) {
 	}
 
 	programsToAdd := []string{"notepad.exe", "code.exe"}
-	err = s.AddPrograms(t.Context(), programsToAdd, "")
+	err = s.AddPrograms(t.Context(), programsToAdd, "", "")
 	assert.Nil(t, err, "AddPrograms should not return error")
 
 	addedPrograms, err := s.PrRepo.GetAllProgramNames(t.Context())

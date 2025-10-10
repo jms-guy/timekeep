@@ -5,7 +5,7 @@
 
 # Timekeep
 
-A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage.
+A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime) integration.
 
 ## Table of Contents
 - [Features](#features)
@@ -27,6 +27,7 @@ A process activity tracker, it runs as a background service recording start/stop
 - Active session aggregation across multiple PIDs
 - Session history and total lifetime durations
 - CLI for managing tracked programs
+- WakaTime integration allows for tracking external program usage alongside your IDE/web-browsing stats
 
 ## How It Works
 - Windows: embeds a PowerShell script to subscribe to WMI process start/stop events.
@@ -37,11 +38,13 @@ A process activity tracker, it runs as a background service recording start/stop
 
 **Full command reference:** [Commands](https://github.com/jms-guy/timekeep/blob/main/docs/commands.md)
 
+### Quick Start
 ```powershell
-timekeep add notepad.exe  # Add notepad
+timekeep add notepad.exe --category notes # Add notepad
 timekeep ls               # List currently tracked programs
  • notepad.exe
 timekeep info notepad.exe # Basic info for program sessions
+ • Category: notes
  • Current Lifetime: 19h 41m
  • Total sessions to date: 4
  • Last Session: 2025-09-26 11:25 - 2025-09-26 11:26 (21 seconds)
@@ -52,6 +55,8 @@ timekeep history notepad.exe  # Session history for program
   notepad.exe | 2025-09-23 11:18 - 2025-09-23 11:19 | Duration: 56 seconds
   notepad.exe | 2025-09-22 13:08 - 2025-09-23 08:48 | Duration: 19h 39m
 ```
+
+**Note**: Program category not required for local tracking. Required for WakaTime integration.
 
 ## Installation
 
@@ -170,20 +175,37 @@ Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to
   2. Have [wakatime-cli](https://github.com/wakatime/wakatime-cli) installed on their machine
 
 Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep/blob/waka_integration/README.md#file-locations) file, or provide them through flags:
-`timekeep wakatime enable --api-key "KEY" --set-path "PATH"`
+
+`timekeep wakatime enable --api-key YOUR-KEY --set-path wakatime-cli-PATH`
 
 ```json
 {
   "wakatime": {
     "enabled": true,
     "api_key": "APIKEY",
-    "cli_path": "PATH"
+    "cli_path": "PATH",
+    "global_project": "PROJECT"
   }
 }
 ```
 
 **The wakatime-cli path must be an absolute path.**
 
+### Complete WakaTime setup example
+
+`timekeep wakatime enable --api-key YOUR-KEY --set-path wakatime-cli-PATH`
+
+`timekeep add photoshop.exe --category designing --project "UI Design"`
+
+Check WakaTime current enabled/disabled status:
+
+`timekeep wakatime status`
+
+Disable integration with:
+
+`timekeep wakatime disable`
+
+### Categories
 After enabling, wakatime-cli heartbeats will be sent containing tracking data for given programs. Note, that only programs added to Timekeep with a given category will have data sent to WakaTime.
 
 `timekeep add notepad.exe --category notes`
@@ -200,8 +222,16 @@ List of categories accepted(defined [here](https://github.com/wakatime/wakatime-
 			" \"translating\", or \"designing\".
 ```
 
-Disable integration with:
-`timekeep wakatime disable`
+### Projects
+Timekeep has no automatic project detection for WakaTime. Users may set a global project for all programs to use in the config, or via the command:
+
+`timekeep wakatime set-project "YOUR-PROJECT"`
+
+Users can also set project variables on a per-program basis:
+
+`timekeep add notepad.exe --category notes --project Timekeep`
+
+Program-set project variables will take precedence over a set Global Project. If no project variable is set via the global_project config or when adding programs, WakaTime will fall back to default "Unknown Project".
 
 ## File Locations
 - **Logs** 
@@ -210,7 +240,19 @@ Disable integration with:
 
 - **Config**
   - **Windows**: *C:\ProgramData\Timekeep\config*
-  - **Linux**: *~/.local/config/timekeep*
+  - **Linux**: *~/.config/timekeep*
+  - **Config struct**:
+
+  ```json
+  {
+    "wakatime": {
+      "enabled": true,
+      "api_key": "APIKEY",
+      "cli_path": "PATH",
+      "global_project": "PROJECT"
+    }
+  }
+  ```
 
 - **Database**
   - **Windows**: *C:\ProgramData\Timekeep*
@@ -225,10 +267,6 @@ Disable integration with:
 - Linux - More accurate start/end time logging
 - Linux - Configurable polling interval?
 - Windows - Check for running processes on service start
-- CLI - commands 
-  - sorting for session history (✓)
-  - show active sessions (✓)
-  - enhance ping for more service info
 
 ## Contributing & Issues
 To contribute, clone the repo with ```git clone https://github.com/jms-guy/timekeep```. Please fork the repository and open a pull request to the `main` branch. Run tests from base repo using ```go test ./...```

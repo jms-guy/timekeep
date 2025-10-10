@@ -20,9 +20,11 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	}
 
 	wCmd := s.wakatimeIntegration()
+	wCmd.AddCommand(s.wakatimeStatus())
 	wCmd.AddCommand(s.wakatimeEnable())
 	wCmd.AddCommand(s.wakatimeDisable())
 	wCmd.AddCommand(s.wakatimeSetCLIPath())
+	wCmd.AddCommand(s.wakatimeSetGlobalProject())
 
 	rootCmd.AddCommand(wCmd)
 	rootCmd.AddCommand(s.addProgramsCmd())

@@ -12,7 +12,7 @@ func getConfigLocation() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(home, ".local", "config", "timekeep", "config.json")
+	path := filepath.Join(home, ".config", "timekeep", "config.json")
 
 	return path, nil
 }

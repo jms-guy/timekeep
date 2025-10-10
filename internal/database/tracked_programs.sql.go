@@ -11,17 +11,18 @@ import (
 )
 
 const addProgram = `-- name: AddProgram :exec
-INSERT OR IGNORE INTO tracked_programs (name, category)
-VALUES (?, ?)
+INSERT OR IGNORE INTO tracked_programs (name, category, project)
+VALUES (?, ?, ?)
 `
 
 type AddProgramParams struct {
 	Name     string
 	Category sql.NullString
+	Project  sql.NullString
 }
 
 func (q *Queries) AddProgram(ctx context.Context, arg AddProgramParams) error {
-	_, err := q.db.ExecContext(ctx, addProgram, arg.Name, arg.Category)
+	_, err := q.db.ExecContext(ctx, addProgram, arg.Name, arg.Category, arg.Project)
 	return err
 }
 
@@ -53,7 +54,7 @@ func (q *Queries) GetAllProgramNames(ctx context.Context) ([]string, error) {
 }
 
 const getAllPrograms = `-- name: GetAllPrograms :many
-SELECT id, name, category, lifetime_seconds FROM tracked_programs
+SELECT id, name, lifetime_seconds, category, project FROM tracked_programs
 `
 
 func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) {
@@ -68,8 +69,9 @@ func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Category,
 			&i.LifetimeSeconds,
+			&i.Category,
+			&i.Project,
 		); err != nil {
 			return nil, err
 		}
@@ -85,7 +87,7 @@ func (q *Queries) GetAllPrograms(ctx context.Context) ([]TrackedProgram, error) 
 }
 
 const getProgramByName = `-- name: GetProgramByName :one
-SELECT id, name, category, lifetime_seconds FROM tracked_programs
+SELECT id, name, lifetime_seconds, category, project FROM tracked_programs
 WHERE name = ?
 `
 
@@ -95,8 +97,9 @@ func (q *Queries) GetProgramByName(ctx context.Context, name string) (TrackedPro
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.Category,
 		&i.LifetimeSeconds,
+		&i.Category,
+		&i.Project,
 	)
 	return i, err
 }
@@ -141,6 +144,22 @@ func (q *Queries) ResetLifetimeForProgram(ctx context.Context, name string) erro
 	return err
 }
 
+const updateCategory = `-- name: UpdateCategory :exec
+UPDATE tracked_programs
+SET category = ?
+WHERE name = ?
+`
+
+type UpdateCategoryParams struct {
+	Category sql.NullString
+	Name     string
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error {
+	_, err := q.db.ExecContext(ctx, updateCategory, arg.Category, arg.Name)
+	return err
+}
+
 const updateLifetime = `-- name: UpdateLifetime :exec
 UPDATE tracked_programs
 SET lifetime_seconds = lifetime_seconds + ?
@@ -154,5 +173,21 @@ type UpdateLifetimeParams struct {
 
 func (q *Queries) UpdateLifetime(ctx context.Context, arg UpdateLifetimeParams) error {
 	_, err := q.db.ExecContext(ctx, updateLifetime, arg.LifetimeSeconds, arg.Name)
+	return err
+}
+
+const updateProject = `-- name: UpdateProject :exec
+UPDATE tracked_programs
+SET project = ?
+WHERE name = ?
+`
+
+type UpdateProjectParams struct {
+	Project sql.NullString
+	Name    string
+}
+
+func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
+	_, err := q.db.ExecContext(ctx, updateProject, arg.Project, arg.Name)
 	return err
 }

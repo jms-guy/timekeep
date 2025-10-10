@@ -62,10 +62,13 @@ func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger
 	for program, tracked := range sm.Programs {
 		if len(tracked.PIDs) > 0 {
 			if tracked.Category != "" {
-				if err := e.sendWakaHeartbeat(ctx, logger, program, tracked.Category); err != nil {
+				if err := e.sendWakaHeartbeat(ctx, logger, program, tracked.Category, tracked.Project); err != nil {
 					return err
 				}
+				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s", program, tracked.Category)
+				continue
 			}
+			logger.Printf("INFO: WakaTime heartbeat skipped for %s, no category set", program)
 		}
 	}
 
@@ -73,11 +76,16 @@ func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger
 }
 
 // Call the wakatime-cli heartbeat command
-func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Logger, program, category string) error {
+func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Logger, program, category, project string) error {
 	cliPath := e.Config.WakaTime.CLIPath
 
 	if cliPath == "" {
 		logger.Println("ERROR: wakatime-cli path not set")
+	}
+
+	projectToUse := e.Config.WakaTime.GlobalProject
+	if project != "" {
+		projectToUse = project
 	}
 
 	args := []string{
@@ -85,6 +93,7 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 		"--entity", program,
 		"--entity-type", "app",
 		"--plugin", "timekeep/" + e.version,
+		"--alternate-project", projectToUse,
 		"--category", category,
 		"--time", fmt.Sprintf("%d", time.Now().Unix()),
 	}
