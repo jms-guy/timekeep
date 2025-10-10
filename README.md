@@ -170,11 +170,13 @@ sudo systemctl daemon-reload
 ```
 
 ## WakaTime
-Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. To enable WakaTime integration, users must:
+Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats.
+
+To enable WakaTime integration, users must:
   1. Have a WakaTime account
   2. Have [wakatime-cli](https://github.com/wakatime/wakatime-cli) installed on their machine
 
-Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep/blob/waka_integration/README.md#file-locations) file, or provide them through flags:
+Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
 
 `timekeep wakatime enable --api-key YOUR-KEY --set-path wakatime-cli-PATH`
 
