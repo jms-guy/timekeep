@@ -28,6 +28,7 @@ func (s *CLIService) RootCmd() *cobra.Command {
 
 	rootCmd.AddCommand(wCmd)
 	rootCmd.AddCommand(s.addProgramsCmd())
+	rootCmd.AddCommand(s.updateCmd())
 	rootCmd.AddCommand(s.removeProgramsCmd())
 	rootCmd.AddCommand(s.getListcmd())
 	rootCmd.AddCommand(s.infoCmd())
