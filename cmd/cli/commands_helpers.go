@@ -141,3 +141,14 @@ func printSession(session database.SessionHistory) {
 		fmt.Printf("%dh %dm\n", hours, minutes)
 	}
 }
+
+// Helper to save config and send refresh command to service
+func (s *CLIService) saveAndNotify() error {
+	if err := s.Config.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+	if err := s.ServiceCmd.WriteToService(); err != nil {
+		return fmt.Errorf("config saved but failed to notify service: %w", err)
+	}
+	return nil
+}

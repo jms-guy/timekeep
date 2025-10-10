@@ -3,6 +3,7 @@
 package transport
 
 import (
+	"context"
 	"log"
 
 	"github.com/Microsoft/go-winio"
@@ -12,7 +13,7 @@ import (
 )
 
 // Opens a Windows named pipe connection, to listen for commands
-func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (t *Transporter) Listen(ctx context.Context, logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	pipeName := "\\\\.\\pipe\\Timekeep"
 
 	pipe, err := winio.ListenPipe(pipeName, nil)
@@ -24,7 +25,8 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 
 	for {
 		select {
-		case <-t.Shutdown:
+		case <-ctx.Done():
+			logger.Println("INFO: Stopping pipe listener")
 			return
 		default:
 			conn, err := pipe.Accept()
@@ -32,7 +34,7 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 				logger.Printf("ERROR: Failed to accept connection: %s", err)
 				continue
 			}
-			go eventCtrl.HandleConnection(logger, s, pr, a, h, conn)
+			go eventCtrl.HandleConnection(ctx, logger, s, pr, a, h, conn)
 		}
 	}
 }

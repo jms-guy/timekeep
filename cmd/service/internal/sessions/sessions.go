@@ -12,6 +12,7 @@ import (
 )
 
 type Tracked struct {
+	Category string
 	PIDs     map[int]struct{}
 	StartAt  time.Time
 	LastSeen time.Time
@@ -27,7 +28,7 @@ func NewSessionManager() *SessionManager {
 }
 
 // Make sure map is initialized, add program to map if not already present
-func (sm *SessionManager) EnsureProgram(name string) {
+func (sm *SessionManager) EnsureProgram(name, category string) {
 	sm.Mu.Lock()
 	defer sm.Mu.Unlock()
 
@@ -37,13 +38,13 @@ func (sm *SessionManager) EnsureProgram(name string) {
 
 	name = strings.ToLower(name)
 	if _, ok := sm.Programs[name]; !ok {
-		sm.Programs[name] = &Tracked{PIDs: make(map[int]struct{})}
+		sm.Programs[name] = &Tracked{Category: category, PIDs: make(map[int]struct{})}
 	}
 }
 
 // If no process is running with given name, will create a new active session in database.
 // If there is already a process running with given name, new PID will be added to active session
-func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveRepository, processName string, pid int) {
+func (sm *SessionManager) CreateSession(ctx context.Context, logger *log.Logger, a repository.ActiveRepository, processName string, pid int) {
 	sm.Mu.Lock()
 
 	t := sm.Programs[processName]
@@ -70,7 +71,7 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 
 	if len(t.PIDs) == 1 {
 		params := database.CreateActiveSessionParams{ProgramName: processName, StartTime: now}
-		if err := a.CreateActiveSession(context.Background(), params); err != nil {
+		if err := a.CreateActiveSession(ctx, params); err != nil {
 			logger.Printf("ERROR: creating active session for %s: %v", processName, err)
 			return
 		}
@@ -82,7 +83,7 @@ func (sm *SessionManager) CreateSession(logger *log.Logger, a repository.ActiveR
 
 // Removes PID from sessions map, if there are still processes running with given name, session will not end.
 // If last process for given name ends, the active session is terminated, and session is moved into session history.
-func (sm *SessionManager) EndSession(logger *log.Logger, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, processName string, pid int) {
+func (sm *SessionManager) EndSession(ctx context.Context, logger *log.Logger, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, processName string, pid int) {
 	sm.Mu.Lock()
 
 	t, ok := sm.Programs[processName]
@@ -105,13 +106,13 @@ func (sm *SessionManager) EndSession(logger *log.Logger, pr repository.ProgramRe
 	sm.Mu.Unlock()
 
 	if len(t.PIDs) == 0 {
-		sm.MoveSessionToHistory(logger, pr, a, h, processName)
+		sm.MoveSessionToHistory(ctx, logger, pr, a, h, processName)
 	}
 }
 
 // Takes an active session and moves it into session history, ending active status
-func (sm *SessionManager) MoveSessionToHistory(logger *log.Logger, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, processName string) {
-	startTime, err := a.GetActiveSession(context.Background(), processName)
+func (sm *SessionManager) MoveSessionToHistory(ctx context.Context, logger *log.Logger, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, processName string) {
+	startTime, err := a.GetActiveSession(ctx, processName)
 	if err != nil {
 		logger.Printf("ERROR: Error getting active session from database: %s", err)
 		return
@@ -125,13 +126,13 @@ func (sm *SessionManager) MoveSessionToHistory(logger *log.Logger, pr repository
 		EndTime:         endTime,
 		DurationSeconds: duration,
 	}
-	err = h.AddToSessionHistory(context.Background(), archivedSession)
+	err = h.AddToSessionHistory(ctx, archivedSession)
 	if err != nil {
 		logger.Printf("ERROR: Error creating session history for %s: %s", processName, err)
 		return
 	}
 
-	err = pr.UpdateLifetime(context.Background(), database.UpdateLifetimeParams{
+	err = pr.UpdateLifetime(ctx, database.UpdateLifetimeParams{
 		Name:            processName,
 		LifetimeSeconds: duration,
 	})
@@ -139,7 +140,7 @@ func (sm *SessionManager) MoveSessionToHistory(logger *log.Logger, pr repository
 		logger.Printf("ERROR: Error updating lifetime for %s: %s", processName, err)
 	}
 
-	err = a.RemoveActiveSession(context.Background(), processName)
+	err = a.RemoveActiveSession(ctx, processName)
 	if err != nil {
 		logger.Printf("ERROR: Error removing active session for %s: %s", processName, err)
 	}

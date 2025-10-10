@@ -47,29 +47,38 @@ func (s *timekeepService) Manage() (string, error) {
 		}
 	}
 
-	programs, err := s.prRepo.GetAllProgramNames(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	programs, err := s.prRepo.GetAllPrograms(ctx)
 	if err != nil {
 		return "ERROR: Failed to get programs", err
 	}
 	if len(programs) > 0 {
+		toTrack := []string{}
 		for _, program := range programs {
-			s.sessions.EnsureProgram(program)
+			category := ""
+			if program.Category.Valid {
+				category = program.Category.String
+			}
+			s.sessions.EnsureProgram(program.Name, category)
+
+			toTrack = append(toTrack, program.Name)
 		}
-		go s.eventCtrl.MonitorProcesses(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, programs)
+
+		go s.eventCtrl.MonitorProcesses(ctx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
-	go s.transport.Listen(s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-
-	killSignal := <-interrupt
-	s.logger.Logger.Printf("Got signal: %v", killSignal)
-	s.closeService()
-
-	if killSignal == os.Interrupt {
-		return "INFO: Daemon was interrupted by system signal.", nil
+	if s.eventCtrl.Config.WakaTime.Enabled {
+		s.eventCtrl.StartHeartbeats(ctx, s.logger.Logger, s.sessions)
 	}
 
-	return "INFO: Daemon was killed.", nil
+	go s.transport.Listen(ctx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
+
+	<-ctx.Done()
+
+	s.logger.Logger.Println("INFO: Received shutdown signal")
+	s.closeService(ctx)
+
+	return "INFO: Daemon stopped.", nil
 }

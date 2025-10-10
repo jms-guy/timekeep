@@ -14,11 +14,17 @@ import (
 func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "timekeep",
-		Short: "Timekeep is a process tracking service",
+		Short: "Timekeep is a process activity tracker",
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
 
+	wCmd := s.wakatimeIntegration()
+	wCmd.AddCommand(s.wakatimeEnable())
+	wCmd.AddCommand(s.wakatimeDisable())
+	wCmd.AddCommand(s.wakatimeSetCLIPath())
+
+	rootCmd.AddCommand(wCmd)
 	rootCmd.AddCommand(s.addProgramsCmd())
 	rootCmd.AddCommand(s.removeProgramsCmd())
 	rootCmd.AddCommand(s.getListcmd())

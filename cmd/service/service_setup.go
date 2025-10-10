@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+
 	"github.com/jms-guy/timekeep/cmd/service/internal/daemons"
 	"github.com/jms-guy/timekeep/cmd/service/internal/events"
 	"github.com/jms-guy/timekeep/cmd/service/internal/logs"
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
 	"github.com/jms-guy/timekeep/cmd/service/internal/transport"
+	"github.com/jms-guy/timekeep/internal/config"
 	"github.com/jms-guy/timekeep/internal/repository"
 	mysql "github.com/jms-guy/timekeep/sql"
 )
@@ -46,6 +49,13 @@ func ServiceSetup() (*timekeepService, error) {
 
 	service := NewTimekeepService(store, store, store, logger, eventCtrl, sessions, ts, d)
 
+	config, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	service.eventCtrl.Config = config
+
 	return service, nil
 }
 
@@ -81,15 +91,17 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 }
 
 // Service shutdown function
-func (s *timekeepService) closeService() {
+func (s *timekeepService) closeService(ctx context.Context) {
+	if s.eventCtrl.Config.WakaTime.Enabled { // Stop WakaTime heartbeats
+		s.eventCtrl.StopHeartbeats()
+	}
 	s.eventCtrl.StopProcessMonitor() // Stop any current monitoring function
-	close(s.transport.Shutdown)      // Close open IPC
 	s.logger.FileCleanup()           // Close open logging file
 
 	s.sessions.Mu.Lock()
 	for program, tracked := range s.sessions.Programs { // End any active sessions
 		if len(tracked.PIDs) != 0 {
-			s.sessions.MoveSessionToHistory(s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
+			s.sessions.MoveSessionToHistory(ctx, s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
 		}
 	}
 	s.sessions.Mu.Unlock()

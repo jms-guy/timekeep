@@ -3,6 +3,7 @@
 package transport
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
-func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (t *Transporter) Listen(ctx context.Context, logger *log.Logger, eventCtrl *events.EventController, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	socketDir := "/var/run/timekeep"
 	socketName := socketDir + "/timekeep.sock"
 
@@ -40,7 +41,8 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 
 	for {
 		select {
-		case <-t.Shutdown:
+		case <-ctx.Done():
+			logger.Println("INFO: Closing socket connection")
 			return
 		default:
 			conn, err := listener.Accept()
@@ -48,7 +50,7 @@ func (t *Transporter) Listen(logger *log.Logger, eventCtrl *events.EventControll
 				logger.Printf("ERROR: Failed to accept connection: %s", err)
 				continue
 			}
-			go eventCtrl.HandleConnection(logger, s, pr, a, h, conn)
+			go eventCtrl.HandleConnection(ctx, logger, s, pr, a, h, conn)
 		}
 	}
 }

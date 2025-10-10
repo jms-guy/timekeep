@@ -7,7 +7,7 @@ import (
 )
 
 func (s *CLIService) addProgramsCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "add",
 		Aliases: []string{"Add", "ADD"},
 		Short:   "Add a program to begin tracking",
@@ -16,9 +16,15 @@ func (s *CLIService) addProgramsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			return s.AddPrograms(ctx, args)
+			category, _ := cmd.Flags().GetString("category")
+
+			return s.AddPrograms(ctx, args, category)
 		},
 	}
+
+	cmd.Flags().String("category", "", "Add category to tracked program(s). Category provided will be applied to all programs passed as arguments. (required for WakaTime integration)")
+
+	return cmd
 }
 
 func (s *CLIService) removeProgramsCmd() *cobra.Command {
@@ -37,7 +43,7 @@ func (s *CLIService) removeProgramsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("all", false, "When provided removes all currently tracked programs")
+	cmd.Flags().Bool("all", false, "Removes all currently tracked programs")
 
 	return cmd
 }
@@ -135,7 +141,7 @@ func (s *CLIService) resetStatsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("all", false, "If flag is provided, resets all currently tracked program data. Does not remove programs from tracking")
+	cmd.Flags().Bool("all", false, "Resets all currently tracked program data. Does not remove programs from tracking")
 
 	return cmd
 }
@@ -174,6 +180,56 @@ func (s *CLIService) getVersionCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.GetVersion()
+		},
+	}
+}
+
+func (s *CLIService) wakatimeIntegration() *cobra.Command {
+	return &cobra.Command{
+		Use:     "wakatime",
+		Aliases: []string{"WakaTime", "WAKATIME"},
+		Short:   "Enable/disable integration with WakaTime",
+	}
+}
+
+func (s *CLIService) wakatimeEnable() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "enable",
+		Aliases: []string{"Enable", "ENABLE"},
+		Short:   "Enable WakaTime integration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			apiKey, _ := cmd.Flags().GetString("api-key")
+			path, _ := cmd.Flags().GetString("set-path")
+
+			return s.EnableWakaTime(apiKey, path)
+		},
+	}
+
+	cmd.Flags().String("api-key", "", "User's WakaTime API key")
+	cmd.Flags().String("set-path", "", "Set absolute path for wakatime-cli")
+
+	return cmd
+}
+
+func (s *CLIService) wakatimeDisable() *cobra.Command {
+	return &cobra.Command{
+		Use:     "disable",
+		Aliases: []string{"Disable", "DISABLE"},
+		Short:   "Disable WakaTime integration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.DisableWakaTime()
+		},
+	}
+}
+
+func (s *CLIService) wakatimeSetCLIPath() *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-path",
+		Aliases: []string{"SET-PATH"},
+		Short:   "Set absolute path for wakatime-cli",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.SetCLIPath(args)
 		},
 	}
 }
