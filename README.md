@@ -12,6 +12,8 @@ A process activity tracker, it runs as a background service recording start/stop
 - [How It Works](#how-it-works)
 - [Usage](#usage)
 - [Installation](#installation)
+- [WakaTime](#wakatime)
+- [File Locations](#file-locations)
 - [Current Limitations](#current-limitations)
 - [To-Do](#to-do)
 - [Contributing & Issues](#contributing--issues)
@@ -161,6 +163,58 @@ sudo rm /etc/systemd/system/timekeep.service
 sudo rm /usr/local/bin/timekeepd /usr/local/bin/timekeep
 sudo systemctl daemon-reload
 ```
+
+## WakaTime
+Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. To enable WakaTime integration, users must:
+  1. Have a WakaTime account
+  2. Have [wakatime-cli](https://github.com/wakatime/wakatime-cli) installed on their machine
+
+Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep/blob/waka_integration/README.md#file-locations) file, or provide them through flags:
+`timekeep wakatime enable --api-key "KEY" --set-path "PATH"`
+
+```json
+{
+  "wakatime": {
+    "enabled": true,
+    "api_key": "APIKEY",
+    "cli_path": "PATH"
+  }
+}
+```
+
+**The wakatime-cli path must be an absolute path.**
+
+After enabling, wakatime-cli heartbeats will be sent containing tracking data for given programs. Note, that only programs added to Timekeep with a given category will have data sent to WakaTime.
+
+`timekeep add notepad.exe --category notes`
+
+If no category is set for a program, it will still be tracked locally, but no data for it will be sent out.
+
+List of categories accepted(defined [here](https://github.com/wakatime/wakatime-cli/blob/75ed1c3d905fc77a5039817458298c9ac44853a3/cmd/root.go#L74)):
+```bash
+"Category of this heartbeat activity. Can be \"coding\", \"ai coding\","+
+			" \"building\", \"indexing\", \"debugging\", \"learning\", \"notes\","+
+			" \"meeting\", \"planning\", \"researching\", \"communicating\", \"supporting\","+
+			" \"advising\", \"running tests\", \"writing tests\", \"manual testing\","+
+			" \"writing docs\", \"code reviewing\", \"browsing\","+
+			" \"translating\", or \"designing\".
+```
+
+Disable integration with:
+`timekeep wakatime disable`
+
+## File Locations
+- **Logs** 
+  - **Windows**: *C:\ProgramData\Timekeep\logs*
+  - **Linux**: */var/log/timekeep*
+
+- **Config**
+  - **Windows**: *C:\ProgramData\Timekeep\config*
+  - **Linux**: *~/.local/config/timekeep*
+
+- **Database**
+  - **Windows**: *C:\ProgramData\Timekeep*
+  - **Linux**: *~/.local/share/timekeep*
 
 ## Current Limitations
 - Linux - Very short-lived processes can be missed by polling (poll interval currently default 1s)

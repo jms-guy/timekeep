@@ -199,12 +199,14 @@ func (s *CLIService) wakatimeEnable() *cobra.Command {
 		Short:   "Enable WakaTime integration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			apiKey, _ := cmd.Flags().GetString("api-key")
+			path, _ := cmd.Flags().GetString("set-path")
 
-			return s.EnableWakaTime(apiKey)
+			return s.EnableWakaTime(apiKey, path)
 		},
 	}
 
 	cmd.Flags().String("api-key", "", "User's WakaTime API key")
+	cmd.Flags().String("set-path", "", "Set absolute path for wakatime-cli")
 
 	return cmd
 }

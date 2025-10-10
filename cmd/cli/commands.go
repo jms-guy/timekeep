@@ -124,6 +124,7 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 	lastSession, err := s.HsRepo.GetLastSessionForProgram(ctx, program.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			fmt.Printf(" • Category: %s", program.Category.String)
 			s.formatDuration(" • Current Lifetime: ", duration)
 			fmt.Printf(" • Total sessions to date: 0\n")
 			fmt.Printf(" • Last Session: No sessions recorded yet\n")
@@ -138,6 +139,7 @@ func (s *CLIService) GetInfo(ctx context.Context, args []string) error {
 		return fmt.Errorf("error getting history count for %s: %w", program.Name, err)
 	}
 
+	fmt.Printf(" • Category: %s", program.Category.String)
 	s.formatDuration(" • Current Lifetime: ", duration)
 	fmt.Printf(" • Total sessions to date: %d\n", sessionCount)
 
@@ -286,7 +288,7 @@ func (s *CLIService) GetVersion() error {
 }
 
 // Changes config to enable WakaTime with API key
-func (s *CLIService) EnableWakaTime(apiKey string) error {
+func (s *CLIService) EnableWakaTime(apiKey, path string) error {
 	if s.Config.WakaTime.Enabled {
 		return nil
 	}
@@ -296,7 +298,15 @@ func (s *CLIService) EnableWakaTime(apiKey string) error {
 	}
 
 	if s.Config.WakaTime.APIKey == "" {
-		return fmt.Errorf("WakaTime API key required. Use: timekeep wakatime enable --api-key <key>")
+		return fmt.Errorf("WakaTime API key required. Use flag: --api-key <key>")
+	}
+
+	if path != "" {
+		s.Config.WakaTime.CLIPath = path
+	}
+
+	if s.Config.WakaTime.CLIPath == "" {
+		return fmt.Errorf("wakatime-cli path required. Use flag: --set-path <path>")
 	}
 
 	s.Config.WakaTime.Enabled = true
