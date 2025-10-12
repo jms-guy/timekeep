@@ -47,10 +47,14 @@ func (s *timekeepService) Manage() (string, error) {
 		}
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	serviceCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	programs, err := s.prRepo.GetAllPrograms(ctx)
+	runCtx, runCancel := context.WithCancel(serviceCtx)
+	s.eventCtrl.RunCtx = runCtx
+	s.eventCtrl.Cancel = runCancel
+
+	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return "ERROR: Failed to get programs", err
 	}
@@ -70,19 +74,19 @@ func (s *timekeepService) Manage() (string, error) {
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go s.eventCtrl.MonitorProcesses(ctx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		go s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
 	if s.eventCtrl.Config.WakaTime.Enabled {
-		s.eventCtrl.StartHeartbeats(ctx, s.logger.Logger, s.sessions)
+		s.eventCtrl.StartHeartbeats(runCtx, s.logger.Logger, s.sessions)
 	}
 
-	go s.transport.Listen(ctx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
+	go s.transport.Listen(serviceCtx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
 
-	<-ctx.Done()
+	<-serviceCtx.Done()
 
 	s.logger.Logger.Println("INFO: Received shutdown signal")
-	s.closeService(ctx)
+	s.closeService()
 
 	return "INFO: Daemon stopped.", nil
 }

@@ -59,7 +59,7 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 	time.Sleep(100 * time.Millisecond) // Pause to allow tempfile to finish writing before it attempts to execute
 
 	args := []string{"-ExecutionPolicy", "Bypass", "-File", tempFile.Name(), "-Programs", programList}
-	cmd := exec.Command("powershell", args...)
+	cmd := exec.CommandContext(ctx, "powershell", args...)
 	e.PsProcess = cmd
 
 	var stderr bytes.Buffer

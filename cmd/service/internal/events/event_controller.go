@@ -26,8 +26,9 @@ type Command struct {
 }
 
 type EventController struct {
-	PsProcess           *exec.Cmd          // Powershell process for Windows event monitoring
-	cancel              context.CancelFunc // Event monitoring cancel context
+	PsProcess           *exec.Cmd // Powershell process for Windows event monitoring
+	RunCtx              context.Context
+	Cancel              context.CancelFunc // Event monitoring cancel context
 	Config              *config.Config     // Struct built from config file
 	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
 	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
@@ -82,10 +83,26 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
-	e.StopProcessMonitor()
 	e.StopHeartbeats()
 
-	programs, err := pr.GetAllPrograms(ctx)
+	if e.Cancel != nil {
+		e.Cancel()
+		runCtx, runCancel := context.WithCancel(ctx)
+		e.RunCtx = runCtx
+		e.Cancel = runCancel
+	}
+
+	e.StopProcessMonitor()
+
+	newConfig, err := config.Load()
+	if err != nil {
+		logger.Printf("ERROR: Failed to load config: %s", err)
+		return
+	}
+
+	e.Config = newConfig
+
+	programs, err := pr.GetAllPrograms(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
@@ -107,16 +124,8 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go e.MonitorProcesses(ctx, logger, sm, pr, a, h, toTrack)
+		go e.MonitorProcesses(e.RunCtx, logger, sm, pr, a, h, toTrack)
 	}
-
-	newConfig, err := config.Load()
-	if err != nil {
-		logger.Printf("ERROR: Failed to load config: %s", err)
-		return
-	}
-
-	e.Config = newConfig
 
 	if e.Config.WakaTime.Enabled {
 		e.StartHeartbeats(ctx, logger, sm)
