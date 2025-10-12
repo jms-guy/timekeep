@@ -86,7 +86,7 @@ func (s *timekeepService) Manage() (string, error) {
 	<-serviceCtx.Done()
 
 	s.logger.Logger.Println("INFO: Received shutdown signal")
-	s.closeService()
+	s.closeService(s.logger.Logger)
 
 	return "INFO: Daemon stopped.", nil
 }

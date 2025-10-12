@@ -83,6 +83,7 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+	logger.Println("DEBUG: Refresh: Stopping heartbeats")
 	e.StopHeartbeats()
 
 	if e.Cancel != nil {
@@ -92,6 +93,7 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 		e.Cancel = runCancel
 	}
 
+	logger.Println("DEBUG: Refresh: Stopping process monitor")
 	e.StopProcessMonitor()
 
 	newConfig, err := config.Load()
@@ -102,12 +104,14 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 
 	e.Config = newConfig
 
+	logger.Println("DEBUG: Refresh: Getting programs")
 	programs, err := pr.GetAllPrograms(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
 	}
 
+	logger.Println("DEBUG: Refresh: Looping programs")
 	if len(programs) > 0 {
 		toTrack := []string{}
 		for _, program := range programs {
@@ -124,10 +128,12 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 			toTrack = append(toTrack, program.Name)
 		}
 
+		logger.Println("DEBUG: Refresh: Starting process monitor")
 		go e.MonitorProcesses(e.RunCtx, logger, sm, pr, a, h, toTrack)
 	}
 
 	if e.Config.WakaTime.Enabled {
+		logger.Println("DEBUG: Refresh: Starting heartbeats")
 		e.StartHeartbeats(ctx, logger, sm)
 	}
 

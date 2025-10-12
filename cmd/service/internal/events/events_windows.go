@@ -65,6 +65,7 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
+	logger.Println("INFO: Executing monitor script")
 	if err := cmd.Start(); err != nil {
 		logger.Printf("ERROR: Failed to start PowerShell monitor: %s", err)
 		e.PsProcess = nil

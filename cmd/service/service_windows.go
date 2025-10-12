@@ -93,7 +93,7 @@ loop:
 			case svc.Stop, svc.Shutdown: // Service needs to be stopped or shutdown
 				status <- svc.Status{State: svc.StopPending}
 				s.logger.Logger.Println("INFO: Received stop signal")
-				s.closeService()
+				s.closeService(s.logger.Logger)
 				s.eventCtrl.Cancel()
 				cancel()
 				break loop
