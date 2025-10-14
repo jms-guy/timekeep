@@ -27,6 +27,14 @@ func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logg
 
 // Runs the powershell WMI script, to monitor process events
 func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.Logger, programs []string) {
+	// Check if context is already cancelled
+	select {
+	case <-ctx.Done():
+		logger.Println("INFO: Context already cancelled, not starting monitor")
+		return
+	default:
+	}
+
 	programList := strings.Join(programs, ",")
 
 	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")

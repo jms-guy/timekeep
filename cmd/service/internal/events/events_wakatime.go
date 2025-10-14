@@ -65,7 +65,7 @@ func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger
 				if err := e.sendWakaHeartbeat(ctx, logger, program, tracked.Category, tracked.Project); err != nil {
 					return err
 				}
-				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s", program, tracked.Category)
+				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s, project %s", program, tracked.Category, tracked.Project)
 				continue
 			}
 			logger.Printf("INFO: WakaTime heartbeat skipped for %s, no category set", program)
@@ -87,6 +87,7 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 	if project != "" {
 		projectToUse = project
 	}
+	logger.Printf("INFO: Sending WakaTime heartbeat for %s, category %s, project %s", program, category, projectToUse)
 
 	args := []string{
 		"--key", e.Config.WakaTime.APIKey,

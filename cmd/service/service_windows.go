@@ -41,6 +41,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	status <- svc.Status{State: svc.StartPending}
 
+	s.logger.Logger.Println("DEBUG: Creating context")
 	serviceCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -48,6 +49,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	s.eventCtrl.RunCtx = runCtx
 	s.eventCtrl.Cancel = runCancel
 
+	s.logger.Logger.Println("DEBUG: Getting initial programs")
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		s.logger.Logger.Printf("ERROR: Failed to get programs: %s", err)
@@ -65,12 +67,15 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 			if program.Project.Valid {
 				project = program.Project.String
 			}
+			s.sessions.Mu.Lock()
 			s.sessions.EnsureProgram(program.Name, category, project)
+			s.sessions.Mu.Unlock()
 
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		s.logger.Logger.Println("DEBUG: Starting initial monitor")
+		s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
 	if s.eventCtrl.Config.WakaTime.Enabled {

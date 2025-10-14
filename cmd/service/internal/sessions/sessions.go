@@ -29,17 +29,26 @@ func NewSessionManager() *SessionManager {
 }
 
 // Make sure map is initialized, add program to map if not already present
+// Caller MUST hold sm.Mu Lock
 func (sm *SessionManager) EnsureProgram(name, category, project string) {
-	sm.Mu.Lock()
-	defer sm.Mu.Unlock()
-
 	if sm.Programs == nil {
 		sm.Programs = make(map[string]*Tracked)
 	}
 
 	name = strings.ToLower(name)
-	if _, ok := sm.Programs[name]; !ok {
+	tracked, ok := sm.Programs[name]
+
+	if !ok { // Program not in tracked list?
 		sm.Programs[name] = &Tracked{Category: category, Project: project, PIDs: make(map[int]struct{})}
+		return
+	}
+
+	if tracked.Category != category { // Category change?
+		tracked.Category = category
+	}
+
+	if tracked.Project != project { // Project change?
+		tracked.Project = project
 	}
 }
 
