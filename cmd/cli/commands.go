@@ -89,6 +89,10 @@ func (s *CLIService) RemovePrograms(ctx context.Context, args []string, all bool
 		return nil
 	}
 
+	if len(args) < 1 {
+		return fmt.Errorf("missing argument")
+	}
+
 	for _, program := range args {
 		err := s.PrRepo.RemoveProgram(ctx, strings.ToLower(program))
 		if err != nil {

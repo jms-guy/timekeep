@@ -41,7 +41,6 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 
 	status <- svc.Status{State: svc.StartPending}
 
-	s.logger.Logger.Println("DEBUG: Creating context")
 	serviceCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -49,7 +48,6 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	s.eventCtrl.RunCtx = runCtx
 	s.eventCtrl.Cancel = runCancel
 
-	s.logger.Logger.Println("DEBUG: Getting initial programs")
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		s.logger.Logger.Printf("ERROR: Failed to get programs: %s", err)
@@ -74,7 +72,6 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 			toTrack = append(toTrack, program.Name)
 		}
 
-		s.logger.Logger.Println("DEBUG: Starting initial monitor")
 		s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 

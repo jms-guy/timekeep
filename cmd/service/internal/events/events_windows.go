@@ -30,7 +30,7 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 	// Check if context is already cancelled
 	select {
 	case <-ctx.Done():
-		logger.Println("INFO: Context already cancelled, not starting monitor")
+		logger.Println("WARNING: Context already cancelled, not starting monitor")
 		return
 	default:
 	}

@@ -84,20 +84,13 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
-	logger.Printf("DEBUG: Refresh: Incoming context: %v", ctx)
-
-	logger.Println("DEBUG: Refresh: Stopping heartbeats")
 	e.StopHeartbeats()
-
-	logger.Println("DEBUG: Refresh: Stopping process monitor")
 	e.StopProcessMonitor()
 
 	if e.Cancel != nil {
-		logger.Println("DEBUG: Refresh: Cancelling old context")
 		e.Cancel()
 	}
 	runCtx, runCancel := context.WithCancel(ctx)
-	logger.Printf("DEBUG: Refresh: Created new runCtx: %v", runCtx)
 	e.RunCtx = runCtx
 	e.Cancel = runCancel
 
@@ -109,24 +102,19 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 
 	e.Config = newConfig
 
-	logger.Println("DEBUG: Refresh: Getting programs")
 	programs, err := pr.GetAllPrograms(context.Background())
 	if err != nil {
 		logger.Printf("ERROR: Failed to get programs: %s", err)
 		return
 	}
 
-	logger.Println("DEBUG: Refresh: Updating sessions")
 	if len(programs) > 0 {
-		toTrack := updateSessionsMapOnRefresh(logger, sm, programs)
-		logger.Printf("DEBUG: Refresh: updateSessionsMapOnRefresh returned %d programs to track", len(toTrack))
+		toTrack := updateSessionsMapOnRefresh(sm, programs)
 
-		logger.Println("DEBUG: Refresh: Starting process monitor")
 		go e.MonitorProcesses(e.RunCtx, logger, sm, pr, a, h, toTrack)
 	}
 
 	if e.Config.WakaTime.Enabled {
-		logger.Println("DEBUG: Refresh: Starting heartbeats")
 		e.StartHeartbeats(e.RunCtx, logger, sm)
 	}
 
@@ -134,19 +122,15 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 }
 
 // Takes list of programs from database, and updates session map by adding/removing/altering based on any changes from last database grab
-func updateSessionsMapOnRefresh(logger *log.Logger, sm *sessions.SessionManager, programs []database.TrackedProgram) []string {
+func updateSessionsMapOnRefresh(sm *sessions.SessionManager, programs []database.TrackedProgram) []string {
 	desired := make(map[string]struct{}, len(programs))
 	toTrack := make([]string, 0, len(programs))
-
-	logger.Printf("DEBUG: updateSessionsMapOnRefresh called with %d programs", len(programs))
 
 	sm.Mu.Lock()
 	currentKeys := make([]string, 0, len(sm.Programs))
 	for k := range sm.Programs {
 		currentKeys = append(currentKeys, k)
 	}
-
-	logger.Printf("DEBUG: Current session map has %d programs", len(sm.Programs))
 
 	for _, p := range programs {
 		name := p.Name
@@ -159,7 +143,6 @@ func updateSessionsMapOnRefresh(logger *log.Logger, sm *sessions.SessionManager,
 			proj = p.Project.String
 		}
 
-		logger.Printf("DEBUG: Processing program: %s", name)
 		sm.EnsureProgram(name, cat, proj)
 		desired[name] = struct{}{}
 		toTrack = append(toTrack, name)
@@ -178,6 +161,5 @@ func updateSessionsMapOnRefresh(logger *log.Logger, sm *sessions.SessionManager,
 	}
 	sm.Mu.Unlock()
 
-	logger.Printf("DEBUG: Returning %d programs to track", len(toTrack))
 	return toTrack
 }
