@@ -33,6 +33,10 @@ sudo mkdir -p /var/run/timekeep
 sudo chown "$USER_NAME":"$GROUP_NAME" /var/run/timekeep
 sudo chmod 755 /var/run/timekeep
 
+sudo mkdir -p /var/log/timekeep
+sudo chown "$USER_NAME":"$GROUP_NAME" /var/log/timekeep
+sudo chmod 755 /var/log/timekeep
+
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
 Description=TimeKeep Process Tracker

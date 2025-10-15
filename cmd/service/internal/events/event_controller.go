@@ -13,6 +13,7 @@ import (
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/sessions"
 	"github.com/jms-guy/timekeep/internal/config"
+	"github.com/jms-guy/timekeep/internal/database"
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
@@ -26,8 +27,9 @@ type Command struct {
 }
 
 type EventController struct {
-	PsProcess           *exec.Cmd          // Powershell process for Windows event monitoring
-	cancel              context.CancelFunc // Event monitoring cancel context
+	PsProcess           *exec.Cmd // Powershell process for Windows event monitoring
+	RunCtx              context.Context
+	Cancel              context.CancelFunc // Event monitoring cancel context
 	Config              *config.Config     // Struct built from config file
 	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
 	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
@@ -82,33 +84,15 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
 func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
-	e.StopProcessMonitor()
 	e.StopHeartbeats()
+	e.StopProcessMonitor()
 
-	programs, err := pr.GetAllPrograms(ctx)
-	if err != nil {
-		logger.Printf("ERROR: Failed to get programs: %s", err)
-		return
+	if e.Cancel != nil {
+		e.Cancel()
 	}
-
-	if len(programs) > 0 {
-		toTrack := []string{}
-		for _, program := range programs {
-			category := ""
-			project := ""
-			if program.Category.Valid {
-				category = program.Category.String
-			}
-			if program.Project.Valid {
-				project = program.Project.String
-			}
-			sm.EnsureProgram(program.Name, category, project)
-
-			toTrack = append(toTrack, program.Name)
-		}
-
-		go e.MonitorProcesses(ctx, logger, sm, pr, a, h, toTrack)
-	}
+	runCtx, runCancel := context.WithCancel(ctx)
+	e.RunCtx = runCtx
+	e.Cancel = runCancel
 
 	newConfig, err := config.Load()
 	if err != nil {
@@ -118,9 +102,64 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 
 	e.Config = newConfig
 
+	programs, err := pr.GetAllPrograms(context.Background())
+	if err != nil {
+		logger.Printf("ERROR: Failed to get programs: %s", err)
+		return
+	}
+
+	if len(programs) > 0 {
+		toTrack := updateSessionsMapOnRefresh(sm, programs)
+
+		go e.MonitorProcesses(e.RunCtx, logger, sm, pr, a, h, toTrack)
+	}
+
 	if e.Config.WakaTime.Enabled {
-		e.StartHeartbeats(ctx, logger, sm)
+		e.StartHeartbeats(e.RunCtx, logger, sm)
 	}
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))
+}
+
+// Takes list of programs from database, and updates session map by adding/removing/altering based on any changes from last database grab
+func updateSessionsMapOnRefresh(sm *sessions.SessionManager, programs []database.TrackedProgram) []string {
+	desired := make(map[string]struct{}, len(programs))
+	toTrack := make([]string, 0, len(programs))
+
+	sm.Mu.Lock()
+	currentKeys := make([]string, 0, len(sm.Programs))
+	for k := range sm.Programs {
+		currentKeys = append(currentKeys, k)
+	}
+
+	for _, p := range programs {
+		name := p.Name
+		cat := ""
+		if p.Category.Valid {
+			cat = p.Category.String
+		}
+		proj := ""
+		if p.Project.Valid {
+			proj = p.Project.String
+		}
+
+		sm.EnsureProgram(name, cat, proj)
+		desired[name] = struct{}{}
+		toTrack = append(toTrack, name)
+	}
+
+	if len(desired) == 0 {
+		for _, k := range currentKeys {
+			delete(sm.Programs, k)
+		}
+	} else {
+		for _, k := range currentKeys {
+			if _, keep := desired[k]; !keep {
+				delete(sm.Programs, k)
+			}
+		}
+	}
+	sm.Mu.Unlock()
+
+	return toTrack
 }

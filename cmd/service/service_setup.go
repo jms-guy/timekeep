@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"github.com/jms-guy/timekeep/cmd/service/internal/daemons"
 	"github.com/jms-guy/timekeep/cmd/service/internal/events"
@@ -91,18 +92,24 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 }
 
 // Service shutdown function
-func (s *timekeepService) closeService(ctx context.Context) {
+func (s *timekeepService) closeService(logger *log.Logger) {
+	logger.Println("INFO: Closing service")
 	if s.eventCtrl.Config.WakaTime.Enabled { // Stop WakaTime heartbeats
+		logger.Println("INFO: Stopping heartbeats")
 		s.eventCtrl.StopHeartbeats()
 	}
+	logger.Println("INFO: Stopping process monitor")
 	s.eventCtrl.StopProcessMonitor() // Stop any current monitoring function
-	s.logger.FileCleanup()           // Close open logging file
 
 	s.sessions.Mu.Lock()
 	for program, tracked := range s.sessions.Programs { // End any active sessions
 		if len(tracked.PIDs) != 0 {
-			s.sessions.MoveSessionToHistory(ctx, s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
+			logger.Println("INFO: Ending active sessions")
+			s.sessions.MoveSessionToHistory(context.Background(), s.logger.Logger, s.prRepo, s.asRepo, s.hsRepo, program)
 		}
 	}
+
+	s.logger.FileCleanup() // Close open logging file
+
 	s.sessions.Mu.Unlock()
 }

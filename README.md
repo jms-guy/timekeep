@@ -7,6 +7,8 @@
 
 A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime) integration.
 
+**Linux version currently not working**
+
 ## Table of Contents
 - [Features](#features)
 - [How It Works](#how-it-works)
@@ -15,7 +17,6 @@ A process activity tracker, it runs as a background service recording start/stop
 - [WakaTime](#wakatime)
 - [File Locations](#file-locations)
 - [Current Limitations](#current-limitations)
-- [To-Do](#to-do)
 - [Contributing & Issues](#contributing--issues)
 - [License](#license)
 
@@ -30,8 +31,8 @@ A process activity tracker, it runs as a background service recording start/stop
 - WakaTime integration allows for tracking external program usage alongside your IDE/web-browsing stats
 
 ## How It Works
-- Windows: embeds a PowerShell script to subscribe to WMI process start/stop events.
-- Linux: polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
+- Windows: Embeds a PowerShell script to subscribe to WMI process start/stop events. Runs a pre-monitoring script to find any tracked programs already running on service start
+- Linux: Polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
 - Session model: A session begins when the first process for a tracked program starts. Additional processes (ex. multiple windows) are added to the active session. The session ends only when the last process terminates, giving an accurate picture of total time with that program.
 
 ## Usage
@@ -122,6 +123,11 @@ sudo mkdir -p /var/run/timekeep
 sudo chown "$USER_NAME":"$GROUP_NAME" /var/run/timekeep
 sudo chmod 755 /var/run/timekeep
 
+# Create and set permissions for log directory
+sudo mkdir -p /var/log/timekeep
+sudo chown "$USER_NAME":"$GROUP_NAME" /var/log/timekeep
+sudo chmod 755 /var/log/timekeep
+
 # Create systemd service
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
@@ -170,7 +176,7 @@ sudo systemctl daemon-reload
 ```
 
 ## WakaTime
-Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats.
+Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. **Timekeep does not track activity within these programs, only when these programs are running.**
 
 To enable WakaTime integration, users must:
   1. Have a WakaTime account
@@ -192,6 +198,8 @@ Enable integration through timekeep. Set your WakaTime API key and wakatime-cli 
 ```
 
 **The wakatime-cli path must be an absolute path.**
+
+Example path: *C:\Users\Guy\.wakatime\wakatime-cli.exe*
 
 ### Complete WakaTime setup example
 
@@ -235,6 +243,10 @@ Users can also set project variables on a per-program basis:
 
 Program-set project variables will take precedence over a set Global Project. If no project variable is set via the global_project config or when adding programs, WakaTime will fall back to default "Unknown Project".
 
+Users can update a program's category or project with the **update** command:
+
+`timekeep update notepad.exe --category planning --project Timekeep2`
+
 ## File Locations
 - **Logs** 
   - **Windows**: *C:\ProgramData\Timekeep\logs*
@@ -263,12 +275,6 @@ Program-set project variables will take precedence over a set Global Project. If
 ## Current Limitations
 - Linux - Very short-lived processes can be missed by polling (poll interval currently default 1s)
 - Linux - Program basenames may collide (different binaries with same name are treated as same program)
-- Windows - Processes may be missed if start event happens while service is paused or stopped
-
-## To-Do
-- Linux - More accurate start/end time logging
-- Linux - Configurable polling interval?
-- Windows - Check for running processes on service start
 
 ## Contributing & Issues
 To contribute, clone the repo with ```git clone https://github.com/jms-guy/timekeep```. Please fork the repository and open a pull request to the `main` branch. Run tests from base repo using ```go test ./...```

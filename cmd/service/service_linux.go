@@ -27,6 +27,9 @@ func RunService(name string, isDebug *bool) error {
 
 // Main daemon management function
 func (s *timekeepService) Manage() (string, error) {
+	logger := s.logger.Logger
+
+	logger.Println("INFO: Starting Manage function")
 	usage := "Usage: timekeep install | remove | start | stop | status"
 
 	if len(os.Args) > 1 {
@@ -47,13 +50,18 @@ func (s *timekeepService) Manage() (string, error) {
 		}
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	serviceCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	programs, err := s.prRepo.GetAllPrograms(ctx)
+	runCtx, runCancel := context.WithCancel(serviceCtx)
+	s.eventCtrl.RunCtx = runCtx
+	s.eventCtrl.Cancel = runCancel
+
+	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return "ERROR: Failed to get programs", err
 	}
+	logger.Printf("DEBUG: Have %d programs", len(programs))
 	if len(programs) > 0 {
 		toTrack := []string{}
 		for _, program := range programs {
@@ -65,24 +73,27 @@ func (s *timekeepService) Manage() (string, error) {
 			if program.Project.Valid {
 				project = program.Project.String
 			}
+			logger.Printf("DEBUG: Tracking %s", program.Name)
 			s.sessions.EnsureProgram(program.Name, category, project)
 
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go s.eventCtrl.MonitorProcesses(ctx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		logger.Printf("DEBUG: Entering main Monitor function")
+		go s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
+	logger.Printf("DEBUG: Starting heartbeats")
 	if s.eventCtrl.Config.WakaTime.Enabled {
-		s.eventCtrl.StartHeartbeats(ctx, s.logger.Logger, s.sessions)
+		s.eventCtrl.StartHeartbeats(runCtx, s.logger.Logger, s.sessions)
 	}
 
-	go s.transport.Listen(ctx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
+	go s.transport.Listen(serviceCtx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
 
-	<-ctx.Done()
+	<-serviceCtx.Done()
 
 	s.logger.Logger.Println("INFO: Received shutdown signal")
-	s.closeService(ctx)
+	s.closeService(s.logger.Logger)
 
 	return "INFO: Daemon stopped.", nil
 }

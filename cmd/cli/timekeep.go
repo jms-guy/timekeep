@@ -57,7 +57,7 @@ func (s *CLIService) removeProgramsCmd() *cobra.Command {
 		Aliases: []string{"RM", "remove", "Remove", "REMOVE"},
 		Short:   "Remove a program from tracking list",
 		Long:    "User may specify multiple programs to remove, as long as they're separated by a space. May provide the --all flag to remove all programs from tracking list",
-		Args:    cobra.MinimumNArgs(1),
+		Args:    cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 

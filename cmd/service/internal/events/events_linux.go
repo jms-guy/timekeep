@@ -20,10 +20,7 @@ import (
 
 // Main process monitoring function for Linux version
 func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
-	if e.cancel != nil {
-		e.cancel()
-		e.cancel = nil
-	}
+	logger.Println("INFO: Executing main process monitor")
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -31,16 +28,17 @@ func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logg
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Println("INFO: Monitor context cancelled")
 			return
 		case <-ticker.C:
-			livePIDS := e.checkForProcessStartEvents(ctx, logger, sm, a)
-			e.checkForProcessStopEvents(ctx, logger, sm, pr, a, h, livePIDS)
+			livePIDS := e.checkForProcessStartEvents(logger, sm, a)
+			e.checkForProcessStopEvents(logger, sm, pr, a, h, livePIDS)
 		}
 	}
 }
 
 // Polls /proc and loops over PID entries, looking for any new PIDS belonging to tracked programs
-func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, a repository.ActiveRepository) map[int]struct{} {
+func (e *EventController) checkForProcessStartEvents(logger *log.Logger, sm *sessions.SessionManager, a repository.ActiveRepository) map[int]struct{} {
 	entries, err := os.ReadDir("/proc") // Read /proc
 	if err != nil {
 		logger.Printf("ERROR: Couldn't read /proc: %s", err)
@@ -79,7 +77,7 @@ func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger
 		}
 		sm.Mu.Unlock()
 
-		sm.CreateSession(ctx, logger, a, identity, pid)
+		sm.CreateSession(context.Background(), logger, a, identity, pid)
 	}
 
 	return live
@@ -87,7 +85,7 @@ func (e *EventController) checkForProcessStartEvents(ctx context.Context, logger
 
 // Takes the PID entries found in the previous check function, and compares them against map of active PIDs, to determine if
 // any active sessions need ending
-func (e *EventController) checkForProcessStopEvents(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
+func (e *EventController) checkForProcessStopEvents(logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
 	if livePIDs == nil {
 		livePIDs = map[int]struct{}{}
 	}
@@ -119,16 +117,11 @@ func (e *EventController) checkForProcessStopEvents(ctx context.Context, logger 
 	sm.Mu.Unlock()
 
 	for _, eend := range ends {
-		sm.EndSession(ctx, logger, pr, a, h, eend.program, eend.pid)
+		sm.EndSession(context.Background(), logger, pr, a, h, eend.program, eend.pid)
 	}
 }
 
-func (e *EventController) StopProcessMonitor() {
-	if e.cancel != nil {
-		e.cancel()
-		e.cancel = nil
-	}
-}
+func (e *EventController) StopProcessMonitor() {}
 
 // Read process /proc/{pid}/exe path to get program name
 func readExePath(pid int) (string, error) {
