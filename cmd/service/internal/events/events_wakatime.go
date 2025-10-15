@@ -65,7 +65,7 @@ func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger
 				if err := e.sendWakaHeartbeat(ctx, logger, program, tracked.Category, tracked.Project); err != nil {
 					return err
 				}
-				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s, project %s", program, tracked.Category, tracked.Project)
+				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s", program, tracked.Category)
 				continue
 			}
 			logger.Printf("INFO: WakaTime heartbeat skipped for %s, no category set", program)

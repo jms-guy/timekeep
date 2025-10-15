@@ -72,6 +72,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 			toTrack = append(toTrack, program.Name)
 		}
 
+		s.eventCtrl.StartPreMonitor(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 		s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 

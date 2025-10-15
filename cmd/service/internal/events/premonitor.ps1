@@ -41,7 +41,6 @@ try {
     }
 }
 catch {
-    # Surface errors to logs
     $err = @{
         action = "ps_error"
         message = $_.Exception.Message

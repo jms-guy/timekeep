@@ -43,7 +43,7 @@
 
 - `status`
     - Gets current state of Timekeep service
-    - `timekeep ping`
+    - `timekeep status`
 
 - `update`
     - Update a given program's category/project fields

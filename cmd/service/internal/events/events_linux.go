@@ -20,6 +20,8 @@ import (
 
 // Main process monitoring function for Linux version
 func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	logger.Println("INFO: Executing main process monitor")
+
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
