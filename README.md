@@ -7,7 +7,7 @@
 
 A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime) integration.
 
-**Linux version currently not working**
+2025/10/15 -- **Linux version currently not working**
 
 ## Table of Contents
 - [Features](#features)
