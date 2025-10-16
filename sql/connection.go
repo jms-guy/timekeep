@@ -17,12 +17,13 @@ import (
 var embedMigrations embed.FS
 
 // Open database connection with embedded migrations
-func OpenLocalDatabase() (*database.Queries, error) {
+func OpenLocalDatabase(logger *log.Logger) (*database.Queries, error) {
 	dbPath, err := getDatabasePath()
 	if err != nil {
 		return nil, err
 	}
 
+	logger.Printf("DEBUG: Connecting to database at: %s", dbPath)
 	// #nosec G301
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
@@ -45,6 +46,7 @@ func OpenLocalDatabase() (*database.Queries, error) {
 	}
 
 	queries := database.New(db)
+	logger.Printf("DEBUG: Queries set")
 
 	return queries, nil
 }

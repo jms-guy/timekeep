@@ -57,6 +57,7 @@ func (s *timekeepService) Manage() (string, error) {
 	s.eventCtrl.RunCtx = runCtx
 	s.eventCtrl.Cancel = runCancel
 
+	logger.Printf("DEBUG: Getting initial programs")
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return "ERROR: Failed to get programs", err
