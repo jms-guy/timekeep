@@ -11,14 +11,25 @@ import (
 )
 
 // Start WakaTime heartbeat ticker
-func (e *EventController) StartHeartbeats(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager) {
+func (e *EventController) StartHeartbeats(parent context.Context, logger *log.Logger, sm *sessions.SessionManager) {
+	e.mu.Lock()
+	if e.WakaCancel != nil {
+		e.WakaCancel()
+		e.WakaCancel = nil
+	}
+	ctx, cancel := context.WithCancel(parent)
+	e.WakaCancel = cancel
+	e.mu.Unlock()
+
 	e.heartbeatMu.Lock()
-	e.wakaHeartbeatTicker = time.NewTicker(1 * time.Minute)
+	if e.wakaHeartbeatTicker != nil {
+		e.wakaHeartbeatTicker.Stop()
+	}
+	e.wakaHeartbeatTicker = time.NewTicker(time.Minute)
 	ticker := e.wakaHeartbeatTicker
 	e.heartbeatMu.Unlock()
 
 	logger.Println("INFO: Starting WakaTime heartbeats")
-
 	go func() {
 		defer func() {
 			e.heartbeatMu.Lock()
@@ -28,26 +39,22 @@ func (e *EventController) StartHeartbeats(ctx context.Context, logger *log.Logge
 			}
 			e.heartbeatMu.Unlock()
 		}()
-
 		errorCount := 0
 		for {
 			select {
 			case <-ctx.Done():
 				logger.Println("INFO: Stopping WakaTime heartbeats")
 				return
-
 			case <-ticker.C:
 				if errorCount >= 5 {
 					logger.Println("ERROR: WakaTime heartbeats failed 5 times consecutively, stopping")
 					return
 				}
-
 				if err := e.sendHeartbeats(ctx, logger, sm); err != nil {
 					logger.Printf("ERROR: Failed to send WakaTime heartbeat: %s", err)
 					errorCount++
 					continue
 				}
-
 				errorCount = 0
 			}
 		}
@@ -105,11 +112,17 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 
 // Stops WakaTime heartbeat ticker after disabling integration
 func (e *EventController) StopHeartbeats() {
-	e.heartbeatMu.Lock()
-	defer e.heartbeatMu.Unlock()
+	e.mu.Lock()
+	if e.WakaCancel != nil {
+		e.WakaCancel()
+		e.WakaCancel = nil
+	}
+	e.mu.Unlock()
 
+	e.heartbeatMu.Lock()
 	if e.wakaHeartbeatTicker != nil {
 		e.wakaHeartbeatTicker.Stop()
 		e.wakaHeartbeatTicker = nil
 	}
+	e.heartbeatMu.Unlock()
 }

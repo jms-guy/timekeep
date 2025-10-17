@@ -53,10 +53,6 @@ func (s *timekeepService) Manage() (string, error) {
 	serviceCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runCtx, runCancel := context.WithCancel(serviceCtx)
-	s.eventCtrl.RunCtx = runCtx
-	s.eventCtrl.Cancel = runCancel
-
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return "ERROR: Failed to get programs", err
@@ -77,11 +73,11 @@ func (s *timekeepService) Manage() (string, error) {
 			toTrack = append(toTrack, program.Name)
 		}
 
-		go s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		s.eventCtrl.StartMonitor(serviceCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
 	if s.eventCtrl.Config.WakaTime.Enabled {
-		s.eventCtrl.StartHeartbeats(runCtx, s.logger.Logger, s.sessions)
+		s.eventCtrl.StartHeartbeats(serviceCtx, s.logger.Logger, s.sessions)
 	}
 
 	go s.transport.Listen(serviceCtx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)

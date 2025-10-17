@@ -18,6 +18,18 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+func (e *EventController) StartMonitor(parent context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	e.mu.Lock()
+	if e.MonCancel != nil {
+		e.MonCancel()
+		e.MonCancel = nil
+	}
+	ctx, cancel := context.WithCancel(parent)
+	e.MonCancel = cancel
+	e.mu.Unlock()
+	go e.MonitorProcesses(ctx, logger, sm, pr, a, h, programs)
+}
+
 // Main process monitoring function for Linux version
 func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	logger.Println("INFO: Executing main process monitor")
@@ -121,7 +133,14 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, sm *sess
 	}
 }
 
-func (e *EventController) StopProcessMonitor() {}
+func (e *EventController) StopProcessMonitor() {
+	e.mu.Lock()
+	if e.MonCancel != nil {
+		e.MonCancel()
+		e.MonCancel = nil
+	}
+	e.mu.Unlock()
+}
 
 // Read process /proc/{pid}/exe path to get program name
 func readExePath(pid int) (string, error) {
