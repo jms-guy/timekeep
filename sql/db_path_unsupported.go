@@ -2,8 +2,6 @@
 
 package sql
 
-import "log"
-
-func getDatabasePath(logger *log.Logger) (string, error) {
+func getDatabasePath() (string, error) {
 	return "", nil
 }

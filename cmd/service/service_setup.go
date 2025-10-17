@@ -32,7 +32,7 @@ func ServiceSetup() (*timekeepService, error) {
 		return nil, err
 	}
 
-	db, err := mysql.OpenLocalDatabase(logger.Logger)
+	db, err := mysql.OpenLocalDatabase()
 	if err != nil {
 		return nil, err
 	}

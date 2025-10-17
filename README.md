@@ -123,11 +123,6 @@ sudo mkdir -p /var/run/timekeep
 sudo chown "$USER_NAME":"$GROUP_NAME" /var/run/timekeep
 sudo chmod 755 /var/run/timekeep
 
-# Create and set permissions for log directory
-sudo mkdir -p /var/log/timekeep
-sudo chown "$USER_NAME":"$GROUP_NAME" /var/log/timekeep
-sudo chmod 755 /var/log/timekeep
-
 # Create systemd service
 sudo tee /etc/systemd/system/timekeep.service > /dev/null <<EOF
 [Unit]
@@ -137,7 +132,10 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
+StandardOutput=journal
+StandardError=journal
 Restart=always
+RestartSec=2s
 User=$USER_NAME
 Group=$GROUP_NAME
 
@@ -250,7 +248,7 @@ Users can update a program's category or project with the **update** command:
 ## File Locations
 - **Logs** 
   - **Windows**: *C:\ProgramData\Timekeep\logs*
-  - **Linux**: */var/log/timekeep*
+  - **Linux**: *journal*
 
 - **Config**
   - **Windows**: *C:\ProgramData\Timekeep\config*

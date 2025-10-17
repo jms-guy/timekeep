@@ -1,10 +1,8 @@
 package logs
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 type Logs struct {
@@ -19,18 +17,10 @@ func NewLogs() (*Logs, error) {
 		return nil, err
 	}
 
-	// #nosec G301
-	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
-		return nil, fmt.Errorf("ERROR: failed to create log directory: %w", err)
-	}
-
-	// #nosec -- Log file not security issue
-	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
+	logger, f, err := CreateLogger(logPath)
 	if err != nil {
 		return nil, err
 	}
-
-	logger := log.New(f, "", log.LstdFlags)
 
 	return &Logs{Logger: logger, LogFile: f}, nil
 }
