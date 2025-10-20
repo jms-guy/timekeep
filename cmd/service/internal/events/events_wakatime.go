@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"time"
 
@@ -104,10 +105,20 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 		"--alternate-project", projectToUse,
 		"--category", category,
 		"--time", fmt.Sprintf("%d", time.Now().Unix()),
+		"--verbose",
 	}
 
 	cmd := exec.CommandContext(ctx, cliPath, args...)
-	return cmd.Run()
+	cmd.Env = append(os.Environ(),
+		"HOME=/home/jamieguy",
+		"PATH=/usr/local/bin:/usr/bin",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Printf("ERROR: wakatime-cli failed: %v, output: %s", err, out)
+		return err
+	}
+	return nil
 }
 
 // Stops WakaTime heartbeat ticker after disabling integration

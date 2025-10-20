@@ -18,6 +18,8 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+const grace = 3 * time.Second
+
 func (e *EventController) StartMonitor(parent context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	e.mu.Lock()
 	if e.MonCancel != nil {
@@ -123,7 +125,9 @@ func (e *EventController) checkForProcessStopEvents(logger *log.Logger, sm *sess
 				continue
 			}
 
-			ends = append(ends, toEnd{program, pid})
+			if now.Sub(t.LastSeen) >= grace {
+				ends = append(ends, toEnd{program, pid})
+			}
 		}
 	}
 	sm.Mu.Unlock()
