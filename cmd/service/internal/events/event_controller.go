@@ -27,14 +27,12 @@ type Command struct {
 }
 
 type EventController struct {
-	PsProcess           *exec.Cmd          // Powershell process for Windows event monitoring
-	mu                  sync.Mutex         // Mutex for context cancellations
-	MonCancel           context.CancelFunc // Monitoring function cancel context
-	WakaCancel          context.CancelFunc // WakaTime function cancel context
-	Config              *config.Config     // Struct built from config file
-	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
-	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
-	version             string             // Timekeep version
+	PsProcess  *exec.Cmd          // Powershell process for Windows event monitoring
+	mu         sync.Mutex         // Mutex for context cancellations
+	MonCancel  context.CancelFunc // Monitoring function cancel context
+	WakaCancel context.CancelFunc // WakaTime function cancel context
+	Config     *config.Config     // Struct built from config file
+	version    string             // Timekeep version
 }
 
 func NewEventController() *EventController {

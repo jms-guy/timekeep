@@ -29,6 +29,7 @@ func (e *EventController) StartMonitor(parent context.Context, logger *log.Logge
 	ctx, cancel := context.WithCancel(parent)
 	e.MonCancel = cancel
 	e.mu.Unlock()
+
 	go e.MonitorProcesses(ctx, logger, sm, pr, a, h, programs)
 }
 
