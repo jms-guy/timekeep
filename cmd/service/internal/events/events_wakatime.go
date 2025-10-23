@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"time"
 
@@ -11,23 +12,23 @@ import (
 )
 
 // Start WakaTime heartbeat ticker
-func (e *EventController) StartHeartbeats(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager) {
-	e.heartbeatMu.Lock()
-	e.wakaHeartbeatTicker = time.NewTicker(1 * time.Minute)
-	ticker := e.wakaHeartbeatTicker
-	e.heartbeatMu.Unlock()
+func (e *EventController) StartHeartbeats(parent context.Context, logger *log.Logger, sm *sessions.SessionManager) {
+	newCtx, newCancel := context.WithCancel(parent)
+
+	e.mu.Lock()
+	oldCancel := e.WakaCancel
+	e.WakaCancel = newCancel
+	e.mu.Unlock()
+
+	if oldCancel != nil {
+		oldCancel()
+	}
 
 	logger.Println("INFO: Starting WakaTime heartbeats")
 
-	go func() {
-		defer func() {
-			e.heartbeatMu.Lock()
-			if e.wakaHeartbeatTicker != nil {
-				e.wakaHeartbeatTicker.Stop()
-				e.wakaHeartbeatTicker = nil
-			}
-			e.heartbeatMu.Unlock()
-		}()
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
 
 		errorCount := 0
 		for {
@@ -35,43 +36,41 @@ func (e *EventController) StartHeartbeats(ctx context.Context, logger *log.Logge
 			case <-ctx.Done():
 				logger.Println("INFO: Stopping WakaTime heartbeats")
 				return
-
 			case <-ticker.C:
 				if errorCount >= 5 {
 					logger.Println("ERROR: WakaTime heartbeats failed 5 times consecutively, stopping")
 					return
 				}
-
 				if err := e.sendHeartbeats(ctx, logger, sm); err != nil {
 					logger.Printf("ERROR: Failed to send WakaTime heartbeat: %s", err)
 					errorCount++
 					continue
 				}
-
 				errorCount = 0
 			}
 		}
-	}()
+	}(newCtx)
 }
 
 // Send specified heartbeats to WakaTime
 func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager) error {
-	sm.Mu.Lock()
-	defer sm.Mu.Unlock()
+	type item struct{ program, category, project string }
+	items := []item{}
 
-	for program, tracked := range sm.Programs {
-		if len(tracked.PIDs) > 0 {
-			if tracked.Category != "" {
-				if err := e.sendWakaHeartbeat(ctx, logger, program, tracked.Category, tracked.Project); err != nil {
-					return err
-				}
-				logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s", program, tracked.Category)
-				continue
-			}
-			logger.Printf("INFO: WakaTime heartbeat skipped for %s, no category set", program)
+	sm.Mu.Lock()
+	for p, t := range sm.Programs {
+		if len(t.PIDs) > 0 && t.Category != "" {
+			items = append(items, item{p, t.Category, t.Project})
 		}
 	}
+	sm.Mu.Unlock()
 
+	for _, it := range items {
+		if err := e.sendWakaHeartbeat(ctx, logger, it.program, it.category, it.project); err != nil {
+			return err
+		}
+		logger.Printf("INFO: WakaTime heartbeat sent for %s, category %s", it.program, it.category)
+	}
 	return nil
 }
 
@@ -93,23 +92,39 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 		"--key", e.Config.WakaTime.APIKey,
 		"--entity", program,
 		"--entity-type", "app",
-		"--plugin", "timekeep/" + e.version,
-		"--alternate-project", projectToUse,
 		"--category", category,
+		"--alternate-project", projectToUse,
 		"--time", fmt.Sprintf("%d", time.Now().Unix()),
+		"--verbose",
+		"--write",
 	}
 
-	cmd := exec.CommandContext(ctx, cliPath, args...)
-	return cmd.Run()
+	logger.Printf("DEBUG: cli=%s args=%v", cliPath, args)
+
+	execCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(execCtx, cliPath, args...)
+	cmd.Env = append(os.Environ(),
+		"HOME=/home/jamieguy",
+		"PATH=/usr/local/bin:/usr/bin",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Printf("ERROR: wakatime-cli failed: %v, output: %s", err, out)
+		return err
+	}
+	return nil
 }
 
 // Stops WakaTime heartbeat ticker after disabling integration
 func (e *EventController) StopHeartbeats() {
-	e.heartbeatMu.Lock()
-	defer e.heartbeatMu.Unlock()
+	e.mu.Lock()
+	cancel := e.WakaCancel
+	e.WakaCancel = nil
+	e.mu.Unlock()
 
-	if e.wakaHeartbeatTicker != nil {
-		e.wakaHeartbeatTicker.Stop()
-		e.wakaHeartbeatTicker = nil
+	if cancel != nil {
+		cancel()
 	}
 }

@@ -27,17 +27,17 @@ type timekeepService struct {
 }
 
 func ServiceSetup() (*timekeepService, error) {
+	logger, err := logs.NewLogs()
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := mysql.OpenLocalDatabase()
 	if err != nil {
 		return nil, err
 	}
 
 	store := repository.NewSqliteStore(db)
-
-	logger, err := logs.NewLogs()
-	if err != nil {
-		return nil, err
-	}
 
 	d, err := daemons.NewDaemonManager()
 	if err != nil {

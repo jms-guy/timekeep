@@ -53,15 +53,10 @@ func (s *timekeepService) Manage() (string, error) {
 	serviceCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runCtx, runCancel := context.WithCancel(serviceCtx)
-	s.eventCtrl.RunCtx = runCtx
-	s.eventCtrl.Cancel = runCancel
-
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		return "ERROR: Failed to get programs", err
 	}
-	logger.Printf("DEBUG: Have %d programs", len(programs))
 	if len(programs) > 0 {
 		toTrack := []string{}
 		for _, program := range programs {
@@ -73,19 +68,16 @@ func (s *timekeepService) Manage() (string, error) {
 			if program.Project.Valid {
 				project = program.Project.String
 			}
-			logger.Printf("DEBUG: Tracking %s", program.Name)
 			s.sessions.EnsureProgram(program.Name, category, project)
 
 			toTrack = append(toTrack, program.Name)
 		}
 
-		logger.Printf("DEBUG: Entering main Monitor function")
-		go s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		s.eventCtrl.StartMonitor(serviceCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
-	logger.Printf("DEBUG: Starting heartbeats")
 	if s.eventCtrl.Config.WakaTime.Enabled {
-		s.eventCtrl.StartHeartbeats(runCtx, s.logger.Logger, s.sessions)
+		s.eventCtrl.StartHeartbeats(serviceCtx, s.logger.Logger, s.sessions)
 	}
 
 	go s.transport.Listen(serviceCtx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)

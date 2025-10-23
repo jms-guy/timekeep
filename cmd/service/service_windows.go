@@ -44,10 +44,6 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 	serviceCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	runCtx, runCancel := context.WithCancel(serviceCtx)
-	s.eventCtrl.RunCtx = runCtx
-	s.eventCtrl.Cancel = runCancel
-
 	programs, err := s.prRepo.GetAllPrograms(context.Background())
 	if err != nil {
 		s.logger.Logger.Printf("ERROR: Failed to get programs: %s", err)
@@ -72,12 +68,12 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 			toTrack = append(toTrack, program.Name)
 		}
 
-		s.eventCtrl.StartPreMonitor(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
-		s.eventCtrl.MonitorProcesses(runCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		s.eventCtrl.StartPreMonitor(s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
+		s.eventCtrl.StartMonitor(serviceCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
 	if s.eventCtrl.Config.WakaTime.Enabled {
-		s.eventCtrl.StartHeartbeats(runCtx, s.logger.Logger, s.sessions)
+		s.eventCtrl.StartHeartbeats(serviceCtx, s.logger.Logger, s.sessions)
 	}
 
 	go s.transport.Listen(serviceCtx, s.logger.Logger, s.eventCtrl, s.sessions, s.prRepo, s.asRepo, s.hsRepo)
@@ -97,7 +93,8 @@ loop:
 				status <- svc.Status{State: svc.StopPending}
 				s.logger.Logger.Println("INFO: Received stop signal")
 				s.closeService(s.logger.Logger)
-				s.eventCtrl.Cancel()
+				s.eventCtrl.MonCancel()
+				s.eventCtrl.WakaCancel()
 				cancel()
 				break loop
 

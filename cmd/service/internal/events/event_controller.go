@@ -27,13 +27,12 @@ type Command struct {
 }
 
 type EventController struct {
-	PsProcess           *exec.Cmd // Powershell process for Windows event monitoring
-	RunCtx              context.Context
-	Cancel              context.CancelFunc // Event monitoring cancel context
-	Config              *config.Config     // Struct built from config file
-	wakaHeartbeatTicker *time.Ticker       // Ticker for WakaTime enabled heartbeats
-	heartbeatMu         sync.Mutex         // Mutex for WakaTime heartbeat ticker
-	version             string             // Timekeep version
+	PsProcess  *exec.Cmd          // Powershell process for Windows event monitoring
+	mu         sync.Mutex         // Mutex for context cancellations
+	MonCancel  context.CancelFunc // Monitoring function cancel context
+	WakaCancel context.CancelFunc // WakaTime function cancel context
+	Config     *config.Config     // Struct built from config file
+	version    string             // Timekeep version
 }
 
 func NewEventController() *EventController {
@@ -83,16 +82,9 @@ func (e *EventController) HandleConnection(serviceCtx context.Context, logger *l
 }
 
 // Stops the currently running process monitoring script, and starts a new one with updated program list
-func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
+func (e *EventController) RefreshProcessMonitor(serviceCtx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository) {
 	e.StopHeartbeats()
 	e.StopProcessMonitor()
-
-	if e.Cancel != nil {
-		e.Cancel()
-	}
-	runCtx, runCancel := context.WithCancel(ctx)
-	e.RunCtx = runCtx
-	e.Cancel = runCancel
 
 	newConfig, err := config.Load()
 	if err != nil {
@@ -111,11 +103,11 @@ func (e *EventController) RefreshProcessMonitor(ctx context.Context, logger *log
 	if len(programs) > 0 {
 		toTrack := updateSessionsMapOnRefresh(sm, programs)
 
-		go e.MonitorProcesses(e.RunCtx, logger, sm, pr, a, h, toTrack)
+		e.StartMonitor(serviceCtx, logger, sm, pr, a, h, toTrack)
 	}
 
 	if e.Config.WakaTime.Enabled {
-		e.StartHeartbeats(e.RunCtx, logger, sm)
+		e.StartHeartbeats(serviceCtx, logger, sm)
 	}
 
 	logger.Printf("INFO: Process monitor refresh with %d programs", len(programs))

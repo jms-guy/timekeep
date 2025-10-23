@@ -24,7 +24,15 @@ var monitorScript string
 var premonitorScript string
 
 // Main process monitoring function for Windows version
-func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+func (e *EventController) StartMonitor(parent context.Context, logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
+	e.mu.Lock()
+	if e.MonCancel != nil {
+		e.MonCancel()
+		e.MonCancel = nil
+	}
+	ctx, cancel := context.WithCancel(parent)
+	e.MonCancel = cancel
+	e.mu.Unlock()
 	e.startProcessMonitor(ctx, logger, programs)
 }
 
@@ -114,6 +122,13 @@ func (e *EventController) startProcessMonitor(ctx context.Context, logger *log.L
 
 // Stops the WMI powershell script
 func (e *EventController) StopProcessMonitor() {
+	e.mu.Lock()
+	if e.MonCancel != nil {
+		e.MonCancel()
+		e.MonCancel = nil
+	}
+	e.mu.Unlock()
+
 	if e.PsProcess != nil {
 		_ = e.PsProcess.Process.Kill()
 		e.PsProcess = nil
@@ -121,14 +136,7 @@ func (e *EventController) StopProcessMonitor() {
 }
 
 // Runs the pre-monitoring script, gathering PIDs for tracked programs that are already running on service start
-func (e *EventController) StartPreMonitor(ctx context.Context, logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
-	select {
-	case <-ctx.Done():
-		logger.Println("WARNING: Context already cancelled, not starting pre-monitor")
-		return
-	default:
-	}
-
+func (e *EventController) StartPreMonitor(logger *log.Logger, s *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	programList := strings.Join(programs, ",")
 
 	scriptTempDir := filepath.Join("C:\\", "ProgramData", "TimeKeep", "scripts_temp")
@@ -161,7 +169,7 @@ func (e *EventController) StartPreMonitor(ctx context.Context, logger *log.Logge
 	time.Sleep(100 * time.Millisecond)
 
 	args := []string{"-ExecutionPolicy", "Bypass", "-File", tempFile.Name(), "-Programs", programList}
-	cmd := exec.CommandContext(ctx, "powershell", args...)
+	cmd := exec.Command("powershell", args...)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -178,13 +186,6 @@ func (e *EventController) StartPreMonitor(ctx context.Context, logger *log.Logge
 		defer os.Remove(tempFile.Name())
 
 		err := cmd.Wait()
-
-		select {
-		case <-ctx.Done():
-			logger.Println("INFO: Powershell pre-monitor stopped due to context cancellation")
-			return
-		default:
-		}
 
 		if err != nil {
 			logger.Printf("ERROR: PowerShell pre-monitor process exited with error: %s", err)

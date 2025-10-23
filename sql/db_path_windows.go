@@ -1,7 +1,9 @@
 // go: build windows
 package sql
 
-import "path/filepath"
+import (
+	"path/filepath"
+)
 
 // Gets database directory path for Windows
 func getDatabasePath() (string, error) {
