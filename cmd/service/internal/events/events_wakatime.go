@@ -93,6 +93,7 @@ func (e *EventController) sendWakaHeartbeat(ctx context.Context, logger *log.Log
 		"--entity", program,
 		"--entity-type", "app",
 		"--category", category,
+		"--alternate-project", projectToUse,
 		"--time", fmt.Sprintf("%d", time.Now().Unix()),
 		"--verbose",
 		"--write",

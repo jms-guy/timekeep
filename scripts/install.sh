@@ -41,9 +41,6 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/timekeepd
-Environment=HOME=/home/jamieguy
-Environment=PATH=/usr/local/bin:/usr/bin
-WorkingDirectory=/home/jamieguy
 StandardOutput=journal
 StandardError=journal
 KillMode=process
