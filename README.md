@@ -196,7 +196,7 @@ Enable integration through timekeep. Set your WakaTime API key and wakatime-cli 
 
 **The wakatime-cli path must be an absolute path.**
 
-Example path: *C:\Users\Guy\.wakatime\wakatime-cli.exe*
+Example path: *C:\Users\Guy\\.wakatime\wakatime-cli.exe*
 
 ### Complete WakaTime setup example
 
