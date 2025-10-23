@@ -7,8 +7,6 @@
 
 A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime) integration.
 
-**Linux version currently not working**
-
 ## Table of Contents
 - [Features](#features)
 - [How It Works](#how-it-works)
@@ -84,7 +82,7 @@ GOOS=windows go build -o timekeep-service.exe ./cmd/service
 GOOS=windows go build -o timekeep.exe ./cmd/cli
 
 # Install and start service (Run as Administrator)
-sc.exe create timekeep binPath= "C:\Program Files\Timekeep\timekeep-service.exe" start= auto # Assuming this is the location of service binary
+sc.exe create timekeep binPath= "Path to timekeep-service.exe binary" start= auto 
 sc.exe start timekeep
 
 # Verify service is running
@@ -134,6 +132,7 @@ Type=simple
 ExecStart=/usr/local/bin/timekeepd
 StandardOutput=journal
 StandardError=journal
+KillMode=process
 Restart=always
 RestartSec=2s
 User=$USER_NAME
@@ -182,7 +181,7 @@ To enable WakaTime integration, users must:
 
 Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
 
-`timekeep wakatime enable --api-key YOUR-KEY --set-path wakatime-cli-PATH`
+`timekeep wakatime enable --api-key "YOUR-KEY" --set-path "wakatime-cli-PATH"`
 
 ```json
 {
