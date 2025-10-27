@@ -175,18 +175,6 @@ sudo rm /usr/local/bin/timekeepd /usr/local/bin/timekeep
 sudo systemctl daemon-reload
 ```
 
-## Shell Completion
-To include Tab-completion for Shell commands, run the completion command specific for your Shell.
-
-**Bash**
-
-`timekeep completion bash > "~/.local/share/bash-completion/timekeep"`
-
-**PowerShell**
-
-`timekeep completion 
-
-
 ## WakaTime
 Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. **Timekeep does not track activity within these programs, only when these programs are running.**
 
