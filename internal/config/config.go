@@ -9,22 +9,21 @@ import (
 )
 
 type Config struct {
-	WakaTime WakaTimeConfig `json:"wakatime"`
+	WakaTime     WakaTimeConfig `json:"wakatime"`                // WakaTime integration variables
+	PollInterval string         `json:"poll_interval,omitempty"` // Linux - monitor polling interval, default 1s
+	PollGrace    int            `json:"poll_grace,omitempty"`    // Linux - number representing the grace period granted to PIDs accidently missed by polling, default 3
 }
 
 type WakaTimeConfig struct {
-	Enabled       bool   `json:"enabled"`
-	APIKey        string `json:"api_key,omitempty"`
-	CLIPath       string `json:"cli_path,omitempty"`
-	GlobalProject string `json:"global_project,omitempty"`
+	Enabled       bool   `json:"enabled"`                  // WakaTime integration enabling value
+	APIKey        string `json:"api_key,omitempty"`        // WakaTime account API key
+	CLIPath       string `json:"cli_path,omitempty"`       // wakatime-cli path on local machine
+	GlobalProject string `json:"global_project,omitempty"` // Default project to associate all tracked programs with
 }
 
 const defaultConfig = `{
   "wakatime": {
-    "enabled": false,
-	"api_key": "",
-	"cli_path": "",
-	"global_project": ""
+    "enabled": false
   }
 }`
 

@@ -385,22 +385,20 @@ func (s *CLIService) DisableWakaTime() error {
 	return nil
 }
 
-// Sets wakatime-cli file path
-func (s *CLIService) SetCLIPath(args []string) error {
-	newPath := args[0]
-	s.Config.WakaTime.CLIPath = newPath
-
-	if err := s.saveAndNotify(); err != nil {
-		return err
+// Set various config values
+func (s *CLIService) SetConfig(cliPath, project, interval string, grace int) error {
+	if cliPath != "" {
+		s.Config.WakaTime.CLIPath = cliPath
 	}
-
-	return nil
-}
-
-// Sets global_project variable in config
-func (s *CLIService) SetGlobalProject(args []string) error {
-	project := args[0]
-	s.Config.WakaTime.GlobalProject = project
+	if project != "" {
+		s.Config.WakaTime.GlobalProject = project
+	}
+	if interval != "" {
+		s.Config.PollInterval = interval
+	}
+	if grace != 3 && grace >= 0 {
+		s.Config.PollGrace = grace
+	}
 
 	if err := s.saveAndNotify(); err != nil {
 		return err

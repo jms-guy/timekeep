@@ -17,6 +17,8 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
+// Windows specific functions handling process monitoring events, related to WMI event handling
+
 //go:embed monitor.ps1
 var monitorScript string
 

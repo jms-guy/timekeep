@@ -18,7 +18,7 @@ import (
 	"github.com/jms-guy/timekeep/internal/repository"
 )
 
-const grace = 3 * time.Second
+// Linux specific event functions, handling PID tracking through /proc polling
 
 func (e *EventController) StartMonitor(parent context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	e.mu.Lock()
@@ -37,8 +37,15 @@ func (e *EventController) StartMonitor(parent context.Context, logger *log.Logge
 func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, programs []string) {
 	logger.Println("INFO: Executing main process monitor")
 
-	ticker := time.NewTicker(1 * time.Second)
+	pollInterval := e.pollTime()
+	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+
+	// Grace period for PID tracking, to allow for accidently missed PIDs while polling
+	if e.Config.PollGrace <= 0 {
+		e.Config.PollGrace = 3
+	}
+	grace := pollInterval * time.Duration(e.Config.PollGrace)
 
 	for {
 		select {
@@ -47,7 +54,7 @@ func (e *EventController) MonitorProcesses(ctx context.Context, logger *log.Logg
 			return
 		case <-ticker.C:
 			livePIDS := e.checkForProcessStartEvents(logger, sm, a)
-			e.checkForProcessStopEvents(logger, sm, pr, a, h, livePIDS)
+			e.checkForProcessStopEvents(logger, sm, pr, a, h, livePIDS, grace)
 		}
 	}
 }
@@ -100,7 +107,7 @@ func (e *EventController) checkForProcessStartEvents(logger *log.Logger, sm *ses
 
 // Takes the PID entries found in the previous check function, and compares them against map of active PIDs, to determine if
 // any active sessions need ending
-func (e *EventController) checkForProcessStopEvents(logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}) {
+func (e *EventController) checkForProcessStopEvents(logger *log.Logger, sm *sessions.SessionManager, pr repository.ProgramRepository, a repository.ActiveRepository, h repository.HistoryRepository, livePIDs map[int]struct{}, grace time.Duration) {
 	if livePIDs == nil {
 		livePIDs = map[int]struct{}{}
 	}
@@ -145,6 +152,19 @@ func (e *EventController) StopProcessMonitor() {
 		e.MonCancel = nil
 	}
 	e.mu.Unlock()
+}
+
+// Determine the polling interval of the monitoring process through config value - defaults to 1s
+func (e *EventController) pollTime() time.Duration {
+	if e.Config.PollInterval == "" {
+		return 1 * time.Second
+	}
+	d, err := time.ParseDuration(e.Config.PollInterval)
+	if err != nil || d <= 0 {
+		return 1 * time.Second
+	}
+
+	return d
 }
 
 // Read process /proc/{pid}/exe path to get program name

@@ -12,6 +12,7 @@ A process activity tracker, it runs as a background service recording start/stop
 - [How It Works](#how-it-works)
 - [Usage](#usage)
 - [Installation](#installation)
+- [Shell Completion](#shell-completion)
 - [WakaTime](#wakatime)
 - [File Locations](#file-locations)
 - [Current Limitations](#current-limitations)
@@ -30,7 +31,9 @@ A process activity tracker, it runs as a background service recording start/stop
 
 ## How It Works
 - Windows: Embeds a PowerShell script to subscribe to WMI process start/stop events. Runs a pre-monitoring script to find any tracked programs already running on service start
-- Linux: Polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename.
+
+- Linux: Polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename. It polls at a configurable time.Duration value, defaulting to 1s. To catch accidental transient misses, a grace period is granted which is also a configurable value. If a PID is no longer found, or missed when polling, the session will remain open until (poll_interval * poll_grace). For example, default values are poll_interval = 1s and poll_grace = 3; If a PID is not found during a poll, the PID will be removed from the session after 3s if it remains unfound. 0 grace is allowed.
+
 - Session model: A session begins when the first process for a tracked program starts. Additional processes (ex. multiple windows) are added to the active session. The session ends only when the last process terminates, giving an accurate picture of total time with that program.
 
 ## Usage
@@ -172,6 +175,18 @@ sudo rm /usr/local/bin/timekeepd /usr/local/bin/timekeep
 sudo systemctl daemon-reload
 ```
 
+## Shell Completion
+To include Tab-completion for Shell commands, run the completion command specific for your Shell.
+
+**Bash**
+
+`timekeep completion bash > "~/.local/share/bash-completion/timekeep"`
+
+**PowerShell**
+
+`timekeep completion 
+
+
 ## WakaTime
 Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. **Timekeep does not track activity within these programs, only when these programs are running.**
 
@@ -181,7 +196,7 @@ To enable WakaTime integration, users must:
 
 Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
 
-`timekeep wakatime enable --api-key "YOUR-KEY" --set-path "wakatime-cli-PATH"`
+`timekeep wakatime enable --api_key "YOUR-KEY" --cli_path "wakatime-cli-PATH"`
 
 ```json
 {
@@ -200,7 +215,7 @@ Example path: *C:\Users\Guy\\.wakatime\wakatime-cli.exe*
 
 ### Complete WakaTime setup example
 
-`timekeep wakatime enable --api-key YOUR-KEY --set-path wakatime-cli-PATH`
+`timekeep wakatime enable --api_key YOUR-KEY --cli_path wakatime-cli-PATH`
 
 `timekeep add photoshop.exe --category designing --project "UI Design"`
 
@@ -232,7 +247,7 @@ List of categories accepted(defined [here](https://github.com/wakatime/wakatime-
 ### Projects
 Timekeep has no automatic project detection for WakaTime. Users may set a global project for all programs to use in the config, or via the command:
 
-`timekeep wakatime set-project "YOUR-PROJECT"`
+`timekeep config --global_project "YOUR-PROJECT"`
 
 Users can also set project variables on a per-program basis:
 
@@ -261,16 +276,21 @@ Users can update a program's category or project with the **update** command:
       "api_key": "APIKEY",
       "cli_path": "PATH",
       "global_project": "PROJECT"
-    }
+    },
+    "poll_interval": "1s", // String value ("750ms" | "1s" | "2.5s")
+    "poll_grace": 3, // Int value
   }
   ```
+
+  - Update config manually & refresh service, or via command line:
+
+  `timekeep config --poll_interval "2.5s" --poll_grace 2`
 
 - **Database**
   - **Windows**: *C:\ProgramData\Timekeep*
   - **Linux**: *~/.local/share/timekeep*
 
 ## Current Limitations
-- Linux - Very short-lived processes can be missed by polling (poll interval currently default 1s)
 - Linux - Program basenames may collide (different binaries with same name are treated as same program)
 
 ## Contributing & Issues

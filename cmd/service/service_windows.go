@@ -9,6 +9,8 @@ import (
 	"golang.org/x/sys/windows/svc/debug"
 )
 
+// Windows specific service management functions
+
 func RunService(name string, isDebug *bool) error {
 	if *isDebug {
 		service, err := TestServiceSetup()

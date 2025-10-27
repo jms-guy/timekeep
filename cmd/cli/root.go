@@ -23,8 +23,6 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	wCmd.AddCommand(s.wakatimeStatus())
 	wCmd.AddCommand(s.wakatimeEnable())
 	wCmd.AddCommand(s.wakatimeDisable())
-	wCmd.AddCommand(s.wakatimeSetCLIPath())
-	wCmd.AddCommand(s.wakatimeSetGlobalProject())
 
 	rootCmd.AddCommand(wCmd)
 	rootCmd.AddCommand(s.addProgramsCmd())
@@ -38,6 +36,9 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	rootCmd.AddCommand(s.statusServiceCmd())
 	rootCmd.AddCommand(s.getActiveSessionsCmd())
 	rootCmd.AddCommand(s.getVersionCmd())
+	rootCmd.AddCommand(s.setConfigCmd())
+
+	rootCmd.AddCommand(CompletionCmd)
 
 	return rootCmd
 }

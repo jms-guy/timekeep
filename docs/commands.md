@@ -11,6 +11,15 @@
         - `category` - Set category for program, required for WakaTime tracking (`timekeep add notepad.exe --category notes`)
         - `project` - Set project for WakaTime data sorting (`timekeep add notepad.exe --category notes --project timekeep`)
 
+- `config`
+    - Update various config values based on provided flags
+    - `timekeep config --poll_interval "750ms" --poll_grace 2`
+    - Flags:
+        - `cli_path` - wakatime-cli path for WakaTime integration (ABSOLUTE path)
+        - `global_project` - Default project used for WakaTime program sorting
+        - `poll_interval` - Polling interval for Linux process monitoring (default 1s)
+        - `poll_grace` - Grace period for PID removal from sessions on Linux version (default 3)
+
 - `history`
     - Shows session history, may take program name as argument to filter sessions shown
     - `timekeep history`, `timekeep history notepad.exe`
@@ -54,12 +63,10 @@
 - `version`
     - Returns version of Timekeep user is running
 
-- `wakatime [status|enable|disable|set-path|set-project]`
+- `wakatime [status|enable|disable]`
     - Enable WakaTime integration with `timekeep wakatime enable`
         - Flags:
-            - `--api-key "KEY"` - Set WakaTime API key
-            - `--set-path "PATH"` - Set wakatime-cli path(absolute)
+            - `--api_key "KEY"` - Set WakaTime API key
+            - `--cli_path "PATH"` - Set wakatime-cli path(absolute)
     - Disable integration with `timekeep wakatime disable`
     - Check WakaTime enabled/disabled status with `timekeep wakatime status`
-    - Set wakatime-cli path with command `timekeep wakatime set-path "PATH"`
-    - Set global_project config variable with `timekeep wakatime set-project "YOUR_PROJECT"`

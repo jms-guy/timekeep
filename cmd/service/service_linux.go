@@ -10,6 +10,8 @@ import (
 	"syscall"
 )
 
+// Linux specific service management functions
+
 func RunService(name string, isDebug *bool) error {
 	service, err := ServiceSetup()
 	if err != nil {

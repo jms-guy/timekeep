@@ -91,7 +91,7 @@ func NewTimekeepService(pr repository.ProgramRepository, ar repository.ActiveRep
 	}
 }
 
-// Service shutdown function
+// Service shutdown function to stopping running service goroutines, properly end active sessions and close any open files
 func (s *timekeepService) closeService(logger *log.Logger) {
 	logger.Println("INFO: Closing service")
 	if s.eventCtrl.Config.WakaTime.Enabled { // Stop WakaTime heartbeats

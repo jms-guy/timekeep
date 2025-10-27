@@ -6,6 +6,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var CompletionCmd = &cobra.Command{
+	Use:       "completion [bash|zsh|fish|powershell]",
+	Short:     "Generate completion script",
+	ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+	Run: func(cmd *cobra.Command, args []string) {
+		switch args[0] {
+		case "bash":
+			cmd.Root().GenBashCompletion(cmd.OutOrStdout())
+		case "zsh":
+			cmd.Root().GenZshCompletion(cmd.OutOrStdout())
+		case "fish":
+			cmd.Root().GenFishCompletion(cmd.OutOrStdout(), true)
+		case "powershell":
+			cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())
+		}
+	},
+}
+
 func (s *CLIService) addProgramsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "add",
@@ -233,15 +252,15 @@ func (s *CLIService) wakatimeEnable() *cobra.Command {
 		Aliases: []string{"Enable", "ENABLE"},
 		Short:   "Enable WakaTime integration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			apiKey, _ := cmd.Flags().GetString("api-key")
-			path, _ := cmd.Flags().GetString("set-path")
+			apiKey, _ := cmd.Flags().GetString("api_key")
+			path, _ := cmd.Flags().GetString("cli_path")
 
 			return s.EnableWakaTime(apiKey, path)
 		},
 	}
 
-	cmd.Flags().String("api-key", "", "User's WakaTime API key")
-	cmd.Flags().String("set-path", "", "Set absolute path for wakatime-cli")
+	cmd.Flags().String("api_key", "", "User's WakaTime API key")
+	cmd.Flags().String("cli_path", "", "Set absolute path for wakatime-cli")
 
 	return cmd
 }
@@ -257,26 +276,25 @@ func (s *CLIService) wakatimeDisable() *cobra.Command {
 	}
 }
 
-func (s *CLIService) wakatimeSetCLIPath() *cobra.Command {
-	return &cobra.Command{
-		Use:     "set-path",
-		Aliases: []string{"SET-PATH"},
-		Short:   "Set absolute path for wakatime-cli",
-		Args:    cobra.ExactArgs(1),
+func (s *CLIService) setConfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "config",
+		Aliases: []string{"Config", "CONFIG"},
+		Short:   "Set various config values",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.SetCLIPath(args)
-		},
-	}
-}
+			cliPath, _ := cmd.Flags().GetString("cli_path")
+			project, _ := cmd.Flags().GetString("global_project")
+			interval, _ := cmd.Flags().GetString("poll_interval")
+			grace, _ := cmd.Flags().GetInt("poll_grace")
 
-func (s *CLIService) wakatimeSetGlobalProject() *cobra.Command {
-	return &cobra.Command{
-		Use:     "set-project",
-		Aliases: []string{"SET-PROJECT"},
-		Short:   "Set global project variable for WakaTime data sorting",
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.SetGlobalProject(args)
+			return s.SetConfig(cliPath, project, interval, grace)
 		},
 	}
+
+	cmd.Flags().String("cli_path", "", "Set absolute path to wakatime-cli binary")
+	cmd.Flags().String("global_project", "", "Set global project variable for WakaTime data sorting")
+	cmd.Flags().String("poll_interval", "", "Set the polling interval for process monitoring for Linux version")
+	cmd.Flags().Int("poll_grace", 3, "Set grace period for PIDs missed via polling (process will only register as finished after 'poll_interval * poll_grace' ex. '1s * 3 = 3s')")
+
+	return cmd
 }
