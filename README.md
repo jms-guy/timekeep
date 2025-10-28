@@ -12,7 +12,6 @@ A process activity tracker, it runs as a background service recording start/stop
 - [How It Works](#how-it-works)
 - [Usage](#usage)
 - [Installation](#installation)
-- [Shell Completion](#shell-completion)
 - [WakaTime](#wakatime)
 - [File Locations](#file-locations)
 - [Current Limitations](#current-limitations)
@@ -32,7 +31,7 @@ A process activity tracker, it runs as a background service recording start/stop
 ## How It Works
 - Windows: Embeds a PowerShell script to subscribe to WMI process start/stop events. Runs a pre-monitoring script to find any tracked programs already running on service start
 
-- Linux: Polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename. It polls at a configurable time.Duration value, defaulting to 1s. To catch accidental transient misses, a grace period is granted which is also a configurable value. If a PID is no longer found, or missed when polling, the session will remain open until (poll_interval * poll_grace). For example, default values are poll_interval = 1s and poll_grace = 3; If a PID is not found during a poll, the PID will be removed from the session after 3s if it remains unfound. 0 grace is allowed.
+- Linux: Polls `/proc`, resolves process identity via `/proc/<pid>/exe` (readlink) -> fallback to `/proc/<pid>/cmdline` -> last-resort `/proc/<pid>/comm`, then matches by basename. It polls at a configurable time.Duration value, defaulting to 1s. To catch accidental transient misses, a grace period is granted which is also a configurable value. If a PID is no longer found, or missed when polling, the process will keep being tracked until (poll_interval * poll_grace). For example, default values are poll_interval = 1s and poll_grace = 3; If a PID is missed, it’s removed after poll_interval × poll_grace. 0 grace time is allowed if desired.
 
 - Session model: A session begins when the first process for a tracked program starts. Additional processes (ex. multiple windows) are added to the active session. The session ends only when the last process terminates, giving an accurate picture of total time with that program.
 
@@ -85,7 +84,7 @@ GOOS=windows go build -o timekeep-service.exe ./cmd/service
 GOOS=windows go build -o timekeep.exe ./cmd/cli
 
 # Install and start service (Run as Administrator)
-sc.exe create timekeep binPath= "Path to timekeep-service.exe binary" start= auto 
+sc.exe create timekeep binPath= "Absolute Path to timekeep-service.exe binary" start= auto 
 sc.exe start timekeep
 
 # Verify service is running
@@ -159,6 +158,53 @@ Test using CLI:
 timekeep status # Check if the service is responsive
 ```
 
+### Shell Completion
+To include Tab-completion for Shell commands, run the completion commands specific for your Shell.
+
+**Bash**
+
+```bash
+timekeep completion bash | sudo tee /etc/bash_completion.d/timekeep >/dev/null
+source /etc/bash_completion
+```
+
+**PowerShell**
+
+```powershell
+timekeep completion powershell > timekeep.ps1
+mkdir -p (Split-Path $PROFILE)
+Add-Content $PROFILE "./path/to/timekeep.ps1"
+& $PROFILE
+```
+
+If you encounter issues running scripts in PowerShell, bypass the ExecutionPolicy with:
+
+```powershell
+powershell -ExecutionPolicy Bypass
+```
+
+for a single terminal session, or with:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+to loosen restrictions.
+
+
+**Untested** - **Zsh**
+```zsh
+timekeep completion zsh | sudo tee /usr/local/share/zsh/site-functions/_timekeep >/dev/null
+autoload -U compinit && compinit
+```
+
+**Untested** - **Fish**
+```fish
+mkdir -p ~/.config/fish/completions
+timekeep completion fish > ~/.config/fish/completions/timekeep.fish
+# open a new fish session
+```
+
 ## Uninstalling
 
 ### Windows
@@ -182,7 +228,7 @@ To enable WakaTime integration, users must:
   1. Have a WakaTime account
   2. Have [wakatime-cli](https://github.com/wakatime/wakatime-cli) installed on their machine
 
-Enable integration through timekeep. Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
+Enable integration through timekeep. Retrieve your API key from your [WakaTime profile settings](https://wakatime.com/settings/account). Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
 
 `timekeep wakatime enable --api_key "YOUR-KEY" --cli_path "wakatime-cli-PATH"`
 
