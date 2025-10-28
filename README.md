@@ -84,7 +84,7 @@ GOOS=windows go build -o timekeep-service.exe ./cmd/service
 GOOS=windows go build -o timekeep.exe ./cmd/cli
 
 # Install and start service (Run as Administrator)
-sc.exe create timekeep binPath= "Absolute Path to timekeep-service.exe binary" start= auto 
+sc.exe create timekeep binPath= "\"C:\Path\to\timekeep-service.exe\"" start= auto 
 sc.exe start timekeep
 
 # Verify service is running
@@ -171,10 +171,11 @@ source /etc/bash_completion
 **PowerShell**
 
 ```powershell
-timekeep completion powershell > timekeep.ps1
-mkdir -p (Split-Path $PROFILE)
-Add-Content $PROFILE "./path/to/timekeep.ps1"
-& $PROFILE
+New-Item -Force -ItemType Directory (Split-Path $PROFILE) | Out-Null
+$comp = Join-Path (Split-Path $PROFILE) 'timekeep.ps1'
+timekeep completion powershell > $comp
+if (-not (Select-String -Path $PROFILE -SimpleMatch $comp -Quiet)) { Add-Content $PROFILE "`n. $comp" }
+. $PROFILE
 ```
 
 If you encounter issues running scripts in PowerShell, bypass the ExecutionPolicy with:
@@ -311,8 +312,8 @@ Users can update a program's category or project with the **update** command:
       "cli_path": "PATH",
       "global_project": "PROJECT"
     },
-    "poll_interval": "1s", // String value ("750ms" | "1s" | "2.5s")
-    "poll_grace": 3, // Int value
+    "poll_interval": "1s", 
+    "poll_grace": 3, 
   }
   ```
 
