@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
@@ -32,6 +33,7 @@ type EventController struct {
 	MonCancel  context.CancelFunc // Monitoring function cancel context
 	WakaCancel context.CancelFunc // WakaTime function cancel context
 	Config     *config.Config     // Struct built from config file
+	Client     *http.Client       // Http Client for Wakapi heartbeat requests
 	version    string             // Timekeep version
 }
 
@@ -106,7 +108,7 @@ func (e *EventController) RefreshProcessMonitor(serviceCtx context.Context, logg
 		e.StartMonitor(serviceCtx, logger, sm, pr, a, h, toTrack)
 	}
 
-	if e.Config.WakaTime.Enabled {
+	if e.Config.WakaTime.Enabled || e.Config.Wakapi.Enabled {
 		e.StartHeartbeats(serviceCtx, logger, sm)
 	}
 

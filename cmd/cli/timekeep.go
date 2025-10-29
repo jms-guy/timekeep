@@ -96,7 +96,7 @@ func (s *CLIService) getListcmd() *cobra.Command {
 		Use:     "ls",
 		Aliases: []string{"LS", "list", "List", "LIST"},
 		Short:   "Lists programs being tracked by service",
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -156,7 +156,7 @@ func (s *CLIService) refreshCmd() *cobra.Command {
 		Use:     "refresh",
 		Aliases: []string{"Refresh", "REFRESH"},
 		Short:   "Sends a manual refresh command to the service",
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := s.ServiceCmd.WriteToService()
 			if err != nil {
@@ -194,7 +194,7 @@ func (s *CLIService) statusServiceCmd() *cobra.Command {
 		Use:     "status",
 		Aliases: []string{"Status", "STATUS"},
 		Short:   "Gets current OS state of Timekeep service",
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.StatusService()
 		},
@@ -206,7 +206,7 @@ func (s *CLIService) getActiveSessionsCmd() *cobra.Command {
 		Use:     "active",
 		Aliases: []string{"Active", "ACTIVE"},
 		Short:   "Get list of current active sessions being tracked",
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -220,7 +220,7 @@ func (s *CLIService) getVersionCmd() *cobra.Command {
 		Use:     "version",
 		Aliases: []string{"Version", "VERSION"},
 		Short:   "Get current version of Timekeep",
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.GetVersion()
 		},
@@ -239,7 +239,8 @@ func (s *CLIService) wakatimeStatus() *cobra.Command {
 	return &cobra.Command{
 		Use:     "status",
 		Aliases: []string{"STATUS"},
-		Short:   "Show WakaTime current enabled/disabled status",
+		Short:   "Show current enabled/disabled status",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.StatusWakatime()
 		},
@@ -251,6 +252,7 @@ func (s *CLIService) wakatimeEnable() *cobra.Command {
 		Use:     "enable",
 		Aliases: []string{"Enable", "ENABLE"},
 		Short:   "Enable WakaTime integration",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			apiKey, _ := cmd.Flags().GetString("api_key")
 			path, _ := cmd.Flags().GetString("cli_path")
@@ -270,8 +272,61 @@ func (s *CLIService) wakatimeDisable() *cobra.Command {
 		Use:     "disable",
 		Aliases: []string{"Disable", "DISABLE"},
 		Short:   "Disable WakaTime integration",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return s.DisableWakaTime()
+		},
+	}
+}
+
+func (s *CLIService) wakapiIntegration() *cobra.Command {
+	return &cobra.Command{
+		Use:     "wakapi",
+		Aliases: []string{"Wakapi", "WAKAPI"},
+		Short:   "Enable/disable integration with Wakapi",
+	}
+}
+
+func (s *CLIService) wakapiStatus() *cobra.Command {
+	return &cobra.Command{
+		Use:     "status",
+		Aliases: []string{"Status", "STATUS"},
+		Short:   "Show current enabled/disabled status",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.StatusWakapi()
+		},
+	}
+}
+
+func (s *CLIService) wakapiEnable() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "enable",
+		Aliases: []string{"Enable", "ENABLE"},
+		Short:   "Enable Wakapi integration",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			apiKey, _ := cmd.Flags().GetString("api_key")
+			server, _ := cmd.Flags().GetString("server")
+
+			return s.EnableWakapi(apiKey, server)
+		},
+	}
+
+	cmd.Flags().String("api_key", "", "User's Wakapi API key")
+	cmd.Flags().String("server", "", "User's wakapi server address")
+
+	return cmd
+}
+
+func (s *CLIService) wakapiDisable() *cobra.Command {
+	return &cobra.Command{
+		Use:     "disable",
+		Aliases: []string{"Disable", "DISABLE"},
+		Short:   "Disable Wakapi integration",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.DisableWakapi()
 		},
 	}
 }
@@ -283,16 +338,18 @@ func (s *CLIService) setConfigCmd() *cobra.Command {
 		Short:   "Set various config values",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliPath, _ := cmd.Flags().GetString("cli_path")
+			server, _ := cmd.Flags().GetString("server")
 			project, _ := cmd.Flags().GetString("global_project")
 			interval, _ := cmd.Flags().GetString("poll_interval")
 			grace, _ := cmd.Flags().GetInt("poll_grace")
 
-			return s.SetConfig(cliPath, project, interval, grace)
+			return s.SetConfig(cliPath, server, project, interval, grace)
 		},
 	}
 
 	cmd.Flags().String("cli_path", "", "Set absolute path to wakatime-cli binary")
-	cmd.Flags().String("global_project", "", "Set global project variable for WakaTime data sorting")
+	cmd.Flags().String("server", "", "Set server address for user's wakapi instance")
+	cmd.Flags().String("global_project", "", "Set global project variable for WakaTime/Wakapi data sorting")
 	cmd.Flags().String("poll_interval", "", "Set the polling interval for process monitoring for Linux version")
 	cmd.Flags().Int("poll_grace", 3, "Set grace period for PIDs missed via polling (process will only register as finished after 'poll_interval * poll_grace' ex. '1s * 3 = 3s')")
 

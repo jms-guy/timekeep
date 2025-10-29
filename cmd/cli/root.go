@@ -24,7 +24,13 @@ func (s *CLIService) RootCmd() *cobra.Command {
 	wCmd.AddCommand(s.wakatimeEnable())
 	wCmd.AddCommand(s.wakatimeDisable())
 
+	wpCmd := s.wakapiIntegration()
+	wpCmd.AddCommand(s.wakapiStatus())
+	wpCmd.AddCommand(s.wakapiEnable())
+	wpCmd.AddCommand(s.wakapiDisable())
+
 	rootCmd.AddCommand(wCmd)
+	rootCmd.AddCommand(wpCmd)
 	rootCmd.AddCommand(s.addProgramsCmd())
 	rootCmd.AddCommand(s.updateCmd())
 	rootCmd.AddCommand(s.removeProgramsCmd())
