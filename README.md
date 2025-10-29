@@ -244,9 +244,7 @@ Enable integration through timekeep. Retrieve your API key from your [WakaTime p
 }
 ```
 
-**The wakatime-cli path must be an absolute path.**
-
-Example path: *C:\Users\Guy\\.wakatime\wakatime-cli.exe*
+**The wakatime-cli path must be an absolute path.**: *C:\Path\To\\.wakatime\wakatime-cli.exe*
 
 ### Complete WakaTime setup example
 
@@ -325,8 +323,6 @@ Users can update a program's category or project with the **update** command:
   - **Windows**: *C:\ProgramData\Timekeep*
   - **Linux**: *~/.local/share/timekeep*
 
-## Current Limitations
-- Linux - Program basenames may collide (different binaries with same name are treated as same program)
 
 ## Contributing & Issues
 To contribute, clone the repo with ```git clone https://github.com/jms-guy/timekeep```. Please fork the repository and open a pull request to the `main` branch. Run tests from base repo using ```go test ./...```
