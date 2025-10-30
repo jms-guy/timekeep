@@ -12,7 +12,7 @@ A process activity tracker, it runs as a background service recording start/stop
 - [How It Works](#how-it-works)
 - [Usage](#usage)
 - [Installation](#installation)
-- [WakaTime](#wakatime)
+- [WakaTime/Wakapi](#wakatimewakapi)
 - [File Locations](#file-locations)
 - [Current Limitations](#current-limitations)
 - [Contributing & Issues](#contributing--issues)
@@ -91,10 +91,34 @@ sc.exe start timekeep
 Get-Service -Name "timekeep"
 ```
 
+
 Test using CLI:
 ```powershell
 .\timekeep.exe status # Check if the service is responsive
 ```
+
+##### To include shell completion: 
+
+```powershell
+New-Item -Force -ItemType Directory (Split-Path $PROFILE) | Out-Null
+$comp = Join-Path (Split-Path $PROFILE) 'timekeep.ps1'
+timekeep completion powershell > $comp
+if (-not (Select-String -Path $PROFILE -SimpleMatch $comp -Quiet)) { Add-Content $PROFILE "`n. $comp" }
+. $PROFILE
+```
+
+If you encounter issues running scripts in PowerShell, bypass the ExecutionPolicy with:
+
+```powershell
+powershell -ExecutionPolicy Bypass
+```
+
+for a single terminal session, or loosen restrictions with:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
 
 #### Linux
 ```bash
@@ -158,52 +182,11 @@ Test using CLI:
 timekeep status # Check if the service is responsive
 ```
 
-### Shell Completion
-To include Tab-completion for Shell commands, run the completion commands specific for your Shell.
-
-**Bash**
+##### To include shell completion:
 
 ```bash
 timekeep completion bash | sudo tee /etc/bash_completion.d/timekeep >/dev/null
 source /etc/bash_completion
-```
-
-**PowerShell**
-
-```powershell
-New-Item -Force -ItemType Directory (Split-Path $PROFILE) | Out-Null
-$comp = Join-Path (Split-Path $PROFILE) 'timekeep.ps1'
-timekeep completion powershell > $comp
-if (-not (Select-String -Path $PROFILE -SimpleMatch $comp -Quiet)) { Add-Content $PROFILE "`n. $comp" }
-. $PROFILE
-```
-
-If you encounter issues running scripts in PowerShell, bypass the ExecutionPolicy with:
-
-```powershell
-powershell -ExecutionPolicy Bypass
-```
-
-for a single terminal session, or with:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-```
-
-to loosen restrictions.
-
-
-**Untested** - **Zsh**
-```zsh
-timekeep completion zsh | sudo tee /usr/local/share/zsh/site-functions/_timekeep >/dev/null
-autoload -U compinit && compinit
-```
-
-**Untested** - **Fish**
-```fish
-mkdir -p ~/.config/fish/completions
-timekeep completion fish > ~/.config/fish/completions/timekeep.fish
-# open a new fish session
 ```
 
 ## Uninstalling
@@ -222,7 +205,10 @@ sudo rm /usr/local/bin/timekeepd /usr/local/bin/timekeep
 sudo systemctl daemon-reload
 ```
 
-## WakaTime
+## WakaTime/Wakapi
+
+### WakaTime 
+
 Timekeep now integrates with [WakaTime](https://wakatime.com), allowing users to track external program usage alongside their IDE and web-browsing stats. **Timekeep does not track activity within these programs, only when these programs are running.**
 
 To enable WakaTime integration, users must:
@@ -231,13 +217,13 @@ To enable WakaTime integration, users must:
 
 Enable integration through timekeep. Retrieve your API key from your [WakaTime profile settings](https://wakatime.com/settings/account). Set your WakaTime API key and wakatime-cli path either directly in the Timekeep [config](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations) file, or provide them through flags:
 
-`timekeep wakatime enable --api_key "YOUR-KEY" --cli_path "wakatime-cli-PATH"`
+`timekeep wakatime enable --api_key "YOUR_KEY" --cli_path "wakatime-cli_PATH"`
 
 ```json
 {
   "wakatime": {
     "enabled": true,
-    "api_key": "APIKEY",
+    "api_key": "API_KEY",
     "cli_path": "PATH",
     "global_project": "PROJECT"
   }
@@ -246,11 +232,11 @@ Enable integration through timekeep. Retrieve your API key from your [WakaTime p
 
 **The wakatime-cli path must be an absolute path.**: *C:\Path\To\\.wakatime\wakatime-cli.exe*
 
-### Complete WakaTime setup example
+#### Complete WakaTime setup example
 
-`timekeep wakatime enable --api_key YOUR-KEY --cli_path wakatime-cli-PATH`
+`timekeep wakatime enable --api_key "YOUR_KEY" --cli_path "wakatime-cli_PATH"`
 
-`timekeep add photoshop.exe --category designing --project "UI Design"`
+`timekeep add photoshop.exe --category "designing" --project "UI Design"`
 
 Check WakaTime current enabled/disabled status:
 
@@ -260,10 +246,10 @@ Disable integration with:
 
 `timekeep wakatime disable`
 
-### Categories
+#### Categories
 After enabling, wakatime-cli heartbeats will be sent containing tracking data for given programs. Note, that only programs added to Timekeep with a given category will have data sent to WakaTime.
 
-`timekeep add notepad.exe --category notes`
+`timekeep add notepad.exe --category "notes"`
 
 If no category is set for a program, it will still be tracked locally, but no data for it will be sent out.
 
@@ -277,20 +263,44 @@ List of categories accepted(defined [here](https://github.com/wakatime/wakatime-
 			" \"translating\", or \"designing\".
 ```
 
-### Projects
+#### Projects
 Timekeep has no automatic project detection for WakaTime. Users may set a global project for all programs to use in the config, or via the command:
 
 `timekeep config --global_project "YOUR-PROJECT"`
 
 Users can also set project variables on a per-program basis:
 
-`timekeep add notepad.exe --category notes --project Timekeep`
+`timekeep add notepad.exe --category "notes" --project "Timekeep"`
 
 Program-set project variables will take precedence over a set Global Project. If no project variable is set via the global_project config or when adding programs, WakaTime will fall back to default "Unknown Project".
 
 Users can update a program's category or project with the **update** command:
 
-`timekeep update notepad.exe --category planning --project Timekeep2`
+`timekeep update notepad.exe --category "planning" --project "Timekeep2"`
+
+### Wakapi
+
+Similar to WakaTime, users can also allow their program activity to be tracked via [Wakapi](https://github.com/muety/wakapi). The commands and structures are very similar, to enable integration you need your Wakapi API key as well as the address to your running Wakapi server, provided through either command flags or editing the config file.
+
+`timekeep wakapi enable --api_key "YOUR_KEY" --server "127.0.0.1:3000/api"`
+
+`timekeep wakapi disable`
+
+`timekeep wakapi status`
+
+```json
+{
+  "wakapi": {
+    "enabled": true,
+    "api_key": "API_KEY",
+    "server": "ADDRESS",
+    "global_project": "PROJECT"
+  }
+}
+```
+
+The global project variable for Wakapi can be altered manually in the config file, otherwise setting it via the `config` command will by default set it to the same value as the WakaTime global project variable.
+
 
 ## File Locations
 - **Logs** 
@@ -300,14 +310,20 @@ Users can update a program's category or project with the **update** command:
 - **Config**
   - **Windows**: *C:\ProgramData\Timekeep\config*
   - **Linux**: *~/.config/timekeep*
-  - **Config struct**:
+  - **Config structure**:
 
   ```json
   {
     "wakatime": {
       "enabled": true,
-      "api_key": "APIKEY",
+      "api_key": "API_KEY",
       "cli_path": "PATH",
+      "global_project": "PROJECT"
+    },
+    "wakapi": {
+      "enabled": true,
+      "api_key": "API_KEY",
+      "server": "ADDRESS",
       "global_project": "PROJECT"
     },
     "poll_interval": "1s", 

@@ -144,7 +144,7 @@ func (e *EventController) sendWakaTimeHeartbeat(ctx context.Context, logger *log
 	return nil
 }
 
-// Send heartbeat to user's wakapi instance
+// Send heartbeat to user's wakapi server
 func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, category, project string) error {
 	if e.Config.Wakapi.Server == "" || e.Config.Wakapi.APIKey == "" {
 		return fmt.Errorf("missing config variable")
@@ -156,12 +156,13 @@ func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, cate
 	}
 
 	type Heartbeat struct {
-		Entity   string `json:"entity"`
-		Type     string `json:"type"`
-		Category string `json:"category"`
-		Project  string `json:"project"`
-		Time     int64  `json:"time"`
-		IsWrite  bool   `json:"is_write"`
+		Entity          string `json:"entity"`
+		Type            string `json:"type"`
+		Category        string `json:"category"`
+		Project         string `json:"project"`
+		Time            int64  `json:"time"`
+		IsWrite         bool   `json:"is_write"`
+		OperatingSystem string `json:"operating_system"`
 	}
 
 	heartbeat := Heartbeat{
@@ -200,7 +201,7 @@ func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, cate
 	return nil
 }
 
-// Stops WakaTime heartbeat ticker after disabling integration
+// Cancels heartbeat context
 func (e *EventController) StopHeartbeats() {
 	e.mu.Lock()
 	cancel := e.WakaCancel
