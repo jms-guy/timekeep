@@ -339,7 +339,7 @@ func (s *CLIService) GetVersion() error {
 	return nil
 }
 
-// Changes config to enable WakaTime with API key
+// Changes config to enable WakaTime
 func (s *CLIService) EnableWakaTime(apiKey, path string) error {
 	if s.Config.WakaTime.Enabled {
 		return nil
@@ -385,13 +385,63 @@ func (s *CLIService) DisableWakaTime() error {
 	return nil
 }
 
+// Changes config to enable Wakapi
+func (s *CLIService) EnableWakapi(apiKey, server string) error {
+	if s.Config.Wakapi.Enabled {
+		return nil
+	}
+
+	if apiKey != "" {
+		s.Config.Wakapi.APIKey = apiKey
+	}
+
+	if s.Config.Wakapi.APIKey == "" {
+		return fmt.Errorf("WakaTime API key required. Use flag: --api_key <key>")
+	}
+
+	if server != "" {
+		s.Config.Wakapi.Server = server
+	}
+
+	if s.Config.Wakapi.Server == "" {
+		return fmt.Errorf("wakapi server address required. Use flag: --server <address>")
+	}
+
+	s.Config.Wakapi.Enabled = true
+
+	if err := s.saveAndNotify(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Disables Wakapi in config
+func (s *CLIService) DisableWakapi() error {
+	if !s.Config.Wakapi.Enabled {
+		return nil
+	}
+
+	s.Config.Wakapi.Enabled = false
+
+	if err := s.saveAndNotify(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Set various config values
-func (s *CLIService) SetConfig(cliPath, project, interval string, grace int) error {
+func (s *CLIService) SetConfig(cliPath, server, project, interval string, grace int) error {
 	if cliPath != "" {
 		s.Config.WakaTime.CLIPath = cliPath
 	}
+	if server != "" {
+		s.Config.Wakapi.Server = server
+	}
 	if project != "" {
 		s.Config.WakaTime.GlobalProject = project
+		s.Config.Wakapi.GlobalProject = project
 	}
 	if interval != "" {
 		s.Config.PollInterval = interval
@@ -410,6 +460,17 @@ func (s *CLIService) SetConfig(cliPath, project, interval string, grace int) err
 // Returns WakaTime enabled/disabled status for user
 func (s *CLIService) StatusWakatime() error {
 	if s.Config.WakaTime.Enabled {
+		fmt.Println("enabled")
+	} else {
+		fmt.Println("disabled")
+	}
+
+	return nil
+}
+
+// Returns Wakapi enabled/disabled status for user
+func (s *CLIService) StatusWakapi() error {
+	if s.Config.Wakapi.Enabled {
 		fmt.Println("enabled")
 	} else {
 		fmt.Println("disabled")

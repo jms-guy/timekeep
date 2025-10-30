@@ -16,7 +16,8 @@
     - `timekeep config --poll_interval "750ms" --poll_grace 2`
     - Flags:
         - `cli_path` - wakatime-cli path for WakaTime integration (ABSOLUTE path)
-        - `global_project` - Default project used for WakaTime program sorting
+        - `server` - user's wakapi instance server address
+        - `global_project` - Default project used for WakaTime/Wakapi program sorting. Sets value for both project variables, if you want different values, you must manually change the config file
         - `poll_interval` - Polling interval for Linux process monitoring (default 1s)
         - `poll_grace` - Grace period for PID removal from sessions on Linux version (default 3)
 
@@ -70,3 +71,11 @@
             - `--cli_path "PATH"` - Set wakatime-cli path(absolute)
     - Disable integration with `timekeep wakatime disable`
     - Check WakaTime enabled/disabled status with `timekeep wakatime status`
+
+- `wakapi [status|enable|disable]`
+    - Enable Wakapi integration with `timekeep wakapi enable`
+        - Flags:
+            - `--api_key "KEY"` - Set Wakapi API key
+            - `--server "ADDRESS"` - Set server address for wakapi instance
+    - Disable integration with `timekeep wakapi disable`
+    - Check Wakapi enabled/disabled status with `timekeep wakapi status`

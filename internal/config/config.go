@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	WakaTime     WakaTimeConfig `json:"wakatime"`                // WakaTime integration variables
+	Wakapi       WakapiConfig   `json:"wakapi"`                  // Wakapi integration variables
 	PollInterval string         `json:"poll_interval,omitempty"` // Linux - monitor polling interval, default 1s
 	PollGrace    int            `json:"poll_grace,omitempty"`    // Linux - number representing the grace period granted to PIDs accidently missed by polling, default 3
 }
@@ -21,9 +22,19 @@ type WakaTimeConfig struct {
 	GlobalProject string `json:"global_project,omitempty"` // Default project to associate all tracked programs with
 }
 
+type WakapiConfig struct {
+	Enabled       bool   `json:"enabled"`                  // Wakapi integration enabling value
+	Server        string `json:"server,omitempty"`         // Wakapi server address
+	APIKey        string `json:"api_key,omitempty"`        // Wakapi API key
+	GlobalProject string `json:"global_project,omitempty"` // Default project to associate all tracked programs with
+}
+
 const defaultConfig = `{
   "wakatime": {
     "enabled": false
+  },
+  "wakapi": {
+  "enabled": false
   }
 }`
 

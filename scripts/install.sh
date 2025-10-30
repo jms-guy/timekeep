@@ -57,4 +57,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable timekeep.service
 sudo systemctl start timekeep.service
 
+timekeep completion bash | sudo tee /etc/bash_completion.d/timekeep >/dev/null
+source /etc/bash_completion
+
 echo "Installation complete. Run 'timekeep status' to test."

@@ -74,7 +74,7 @@ func (s *timekeepService) Execute(args []string, r <-chan svc.ChangeRequest, sta
 		s.eventCtrl.StartMonitor(serviceCtx, s.logger.Logger, s.sessions, s.prRepo, s.asRepo, s.hsRepo, toTrack)
 	}
 
-	if s.eventCtrl.Config.WakaTime.Enabled {
+	if s.eventCtrl.Config.WakaTime.Enabled || s.eventCtrl.Config.Wakapi.Enabled {
 		s.eventCtrl.StartHeartbeats(serviceCtx, s.logger.Logger, s.sessions)
 	}
 
