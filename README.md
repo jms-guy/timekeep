@@ -135,7 +135,7 @@ sudo install -m 755 timekeep /usr/local/bin/
 # Database directory
 mkdir -p ~/.local/share/timekeep
 
-# Set service capabilities 
+# Set service capabilities, for /proc read permissions
 sudo setcap cap_dac_read_search,cap_sys_ptrace+ep /usr/local/bin/timekeepd
 
 # Set user/group variables
@@ -191,6 +191,8 @@ source /etc/bash_completion
 
 ## Uninstalling
 
+To clean up logs/config/database, file locations are available [here](https://github.com/jms-guy/timekeep?tab=readme-ov-file#file-locations).
+
 ### Windows
 ```powershell
 sc.exe stop timekeep
@@ -230,7 +232,11 @@ Enable integration through timekeep. Retrieve your API key from your [WakaTime p
 }
 ```
 
-**The wakatime-cli path must be an absolute path.**: *C:\Path\To\\.wakatime\wakatime-cli.exe*
+**The wakatime-cli path must be an absolute path.**
+
+*C:\Path\To\\.wakatime\wakatime-cli.exe*
+
+*/home/user/wakatime-cli-linux-amd64*
 
 #### Complete WakaTime setup example
 
@@ -309,7 +315,7 @@ The global project variable for Wakapi can be altered manually in the config fil
 ## File Locations
 - **Logs** 
   - **Windows**: *C:\ProgramData\Timekeep\logs*
-  - **Linux**: *journal*
+  - **Linux**: *journal* -- `journalctl -u timekeep`
 
 - **Config**
   - **Windows**: *C:\ProgramData\Timekeep\config*
