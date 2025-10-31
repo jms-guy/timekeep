@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -198,13 +199,12 @@ func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, cate
 	}
 
 	type Heartbeat struct {
-		Entity          string `json:"entity"`
-		Type            string `json:"type"`
-		Category        string `json:"category"`
-		Project         string `json:"project"`
-		Time            int64  `json:"time"`
-		IsWrite         bool   `json:"is_write"`
-		OperatingSystem string `json:"operating_system"`
+		Entity   string `json:"entity"`
+		Type     string `json:"type"`
+		Category string `json:"category"`
+		Project  string `json:"project"`
+		Time     int64  `json:"time"`
+		IsWrite  bool   `json:"is_write"`
 	}
 
 	heartbeat := Heartbeat{
@@ -228,6 +228,9 @@ func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, cate
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(e.Config.Wakapi.APIKey)))
+
+	userAgent := e.getUserAgent()
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := e.Client.Do(req)
 	if err != nil {
@@ -276,4 +279,22 @@ func (e *EventController) validateAndFormatWakapiURL(server string) (string, err
 	}
 
 	return strings.TrimRight(formatted, "/") + "/api/heartbeat", nil
+}
+
+// Create User Agent header for Wakapi request
+func (e *EventController) getUserAgent() string {
+	app := "Timekeep"
+	version := e.version
+	os := runtime.GOOS
+
+	switch os {
+	case "windows":
+		return fmt.Sprintf("%s/%s (Windows NT 10.0; Win64; x64)", app, version)
+	case "linux":
+		return fmt.Sprintf("%s/%s (X11; Linux x86_64)", app, version)
+	case "darwin":
+		return fmt.Sprintf("%s/%s (Macintosh; Intel Mac OS X 10_15_7)", app, version)
+	default:
+		return fmt.Sprintf("%s/%s (%s)", app, version, os)
+	}
 }
