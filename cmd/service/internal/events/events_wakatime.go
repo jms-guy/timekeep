@@ -9,8 +9,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -48,29 +50,20 @@ func (e *EventController) StartHeartbeats(parent context.Context, logger *log.Lo
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
 
-		errorCount := 0
 		for {
 			select {
 			case <-ctx.Done():
 				logger.Println("INFO: Stopping heartbeats")
 				return
 			case <-ticker.C:
-				if errorCount >= 5 {
-					logger.Println("ERROR: Heartbeats failed 5 times consecutively, stopping")
-					return
-				}
-				if err := e.sendHeartbeats(ctx, logger, sm); err != nil {
-					errorCount++
-					continue
-				}
-				errorCount = 0
+				e.sendHeartbeats(ctx, logger, sm)
 			}
 		}
 	}(newCtx)
 }
 
 // Send specified heartbeats to WakaTime/Wakapi
-func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager) error {
+func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger, sm *sessions.SessionManager) {
 	type item struct{ program, category, project string }
 	items := []item{}
 	var err error
@@ -100,8 +93,6 @@ func (e *EventController) sendHeartbeats(ctx context.Context, logger *log.Logger
 			}
 		}
 	}
-
-	return err
 }
 
 // Call the wakatime-cli heartbeat command
@@ -110,6 +101,10 @@ func (e *EventController) sendWakaTimeHeartbeat(ctx context.Context, logger *log
 
 	if cliPath == "" {
 		return fmt.Errorf("wakatime-cli path not set")
+	}
+
+	if _, err := os.Stat(cliPath); os.IsNotExist(err) {
+		return fmt.Errorf("wakatime-cli not found at path: %s", cliPath)
 	}
 
 	projectToUse := e.Config.WakaTime.GlobalProject
@@ -122,25 +117,67 @@ func (e *EventController) sendWakaTimeHeartbeat(ctx context.Context, logger *log
 		"--entity", program,
 		"--entity-type", "app",
 		"--category", category,
-		"--alternate-project", projectToUse,
-		"--time", fmt.Sprintf("%d", time.Now().Unix()),
-		"--verbose",
-		"--write",
+		"--plugin", "timekeep/" + e.version,
 	}
+
+	if projectToUse != "" {
+		args = append(args, "--project", projectToUse)
+	}
+
+	args = append(args,
+		"--time", fmt.Sprintf("%f", float64(time.Now().Unix())),
+		"--verbose",
+	)
 
 	execCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(execCtx, cliPath, args...)
+
 	cmd.Env = append(os.Environ(),
-		"HOME=/home/jamieguy",
-		"PATH=/usr/local/bin:/usr/bin",
+		"HOME="+os.Getenv("HOME"),
+		"PATH="+os.Getenv("PATH"),
+		"WAKATIME_HOME="+filepath.Join(os.Getenv("HOME"), ".wakatime"),
 	)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		logger.Printf("ERROR: wakatime-cli failed: %v, output: %s", err, out)
-		return err
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	startTime := time.Now()
+	err := cmd.Run()
+	duration := time.Since(startTime)
+
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitCode := exitError.ExitCode()
+
+		if exitCode == 112 {
+			logger.Printf("INFO: wakatime-cli queued heartbeat (exit 112) in %v", duration)
+			if stdout.Len() > 0 {
+				logger.Printf("DEBUG: stdout: %s", stdout.String())
+			}
+			return nil
+		}
+
+		if exitCode == 102 {
+			logger.Printf("WARNING: wakatime-cli API issue (exit 102) in %v", duration)
+			if stderr.Len() > 0 {
+				logger.Printf("DEBUG: stderr: %s", stderr.String())
+			}
+			return nil
+		}
+
+		logger.Printf("ERROR: wakatime-cli failed with exit code %d after %v", exitCode, duration)
+		logger.Printf("ERROR: stdout: %s", stdout.String())
+		logger.Printf("ERROR: stderr: %s", stderr.String())
+		return fmt.Errorf("wakatime-cli exited with code %d", exitCode)
+	} else if err != nil {
+		logger.Printf("ERROR: wakatime-cli failed after %v: %v", duration, err)
+		logger.Printf("ERROR: stdout: %s", stdout.String())
+		logger.Printf("ERROR: stderr: %s", stderr.String())
+		return fmt.Errorf("wakatime-cli execution failed: %v", err)
 	}
+
 	return nil
 }
 
@@ -148,6 +185,11 @@ func (e *EventController) sendWakaTimeHeartbeat(ctx context.Context, logger *log
 func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, category, project string) error {
 	if e.Config.Wakapi.Server == "" || e.Config.Wakapi.APIKey == "" {
 		return fmt.Errorf("missing config variable")
+	}
+
+	apiURL, err := e.validateAndFormatWakapiURL(e.Config.Wakapi.Server)
+	if err != nil {
+		return fmt.Errorf("invalid Wakapi server URL: %v", err)
 	}
 
 	projectToUse := e.Config.Wakapi.GlobalProject
@@ -179,7 +221,7 @@ func (e *EventController) sendWakapiHeartbeat(ctx context.Context, program, cate
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", strings.TrimRight(e.Config.Wakapi.Server, "/")+"/heartbeat", bytes.NewBuffer(heartbeatData))
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(heartbeatData))
 	if err != nil {
 		return err
 	}
@@ -211,4 +253,27 @@ func (e *EventController) StopHeartbeats() {
 	if cancel != nil {
 		cancel()
 	}
+}
+
+// Format URL for Wakapi server address
+func (e *EventController) validateAndFormatWakapiURL(server string) (string, error) {
+	if server == "" {
+		return "", fmt.Errorf("server URL cannot be empty")
+	}
+
+	if !strings.HasPrefix(server, "http://") && !strings.HasPrefix(server, "https://") {
+		server = "http://" + server
+	}
+
+	parsed, err := url.Parse(server)
+	if err != nil {
+		return "", fmt.Errorf("invalid server URL: %v", err)
+	}
+
+	formatted := parsed.Scheme + "://" + parsed.Host
+	if parsed.Path != "" {
+		formatted += parsed.Path
+	}
+
+	return strings.TrimRight(formatted, "/") + "/api/heartbeat", nil
 }

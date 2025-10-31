@@ -282,7 +282,7 @@ Users can update a program's category or project with the **update** command:
 
 Similar to WakaTime, users can also allow their program activity to be tracked via [Wakapi](https://github.com/muety/wakapi). The commands and structures are very similar, to enable integration you need your Wakapi API key as well as the address to your running Wakapi server, provided through either command flags or editing the config file.
 
-`timekeep wakapi enable --api_key "YOUR_KEY" --server "127.0.0.1:3000/api"`
+`timekeep wakapi enable --api_key "YOUR_KEY" --server "127.0.0.1:3000"`
 
 `timekeep wakapi disable`
 
