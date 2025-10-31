@@ -5,7 +5,7 @@
 
 # Timekeep
 
-A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime) integration.
+A process activity tracker, it runs as a background service recording start/stop events for select programs and aggregates active sessions, session history, and lifetime program usage. Now has [WakaTime](https://github.com/jms-guy/timekeep?tab=readme-ov-file#wakatime)/[Wakapi](https://github.com/muety/wakapi) integration.
 
 ## Table of Contents
 - [Features](#features)
@@ -91,13 +91,13 @@ sc.exe start timekeep
 Get-Service -Name "timekeep"
 ```
 
-
 Test using CLI:
+
 ```powershell
 .\timekeep.exe status # Check if the service is responsive
 ```
 
-##### To include shell completion: 
+**To include shell completion**: 
 
 ```powershell
 New-Item -Force -ItemType Directory (Split-Path $PROFILE) | Out-Null
@@ -182,7 +182,7 @@ Test using CLI:
 timekeep status # Check if the service is responsive
 ```
 
-##### To include shell completion:
+**To include shell completion**:
 
 ```bash
 timekeep completion bash | sudo tee /etc/bash_completion.d/timekeep >/dev/null
