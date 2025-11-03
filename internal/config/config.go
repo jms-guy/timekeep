@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 )
 
+// Main user configuration struct
 type Config struct {
 	WakaTime     WakaTimeConfig `json:"wakatime"`                // WakaTime integration variables
 	Wakapi       WakapiConfig   `json:"wakapi"`                  // Wakapi integration variables
@@ -29,6 +30,7 @@ type WakapiConfig struct {
 	GlobalProject string `json:"global_project,omitempty"` // Default project to associate all tracked programs with
 }
 
+// Default config created on service start
 const defaultConfig = `{
   "wakatime": {
     "enabled": false
@@ -38,6 +40,7 @@ const defaultConfig = `{
   }
 }`
 
+// Read config file and load it into memory
 func Load() (*Config, error) {
 	configFile, err := getConfigLocation()
 	if err != nil {
@@ -75,6 +78,7 @@ func Load() (*Config, error) {
 	return &config, nil
 }
 
+// Update the config file with new data
 func (c *Config) Save() error {
 	configFile, err := getConfigLocation()
 	if err != nil {
