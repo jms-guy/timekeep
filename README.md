@@ -14,7 +14,6 @@ A process activity tracker, it runs as a background service recording start/stop
 - [Installation](#installation)
 - [WakaTime/Wakapi](#wakatimewakapi)
 - [File Locations](#file-locations)
-- [Current Limitations](#current-limitations)
 - [Contributing & Issues](#contributing--issues)
 - [License](#license)
 
